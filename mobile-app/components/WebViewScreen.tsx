@@ -38,10 +38,11 @@ const WebViewScreen = forwardRef<WebViewScreenHandle, Props>(
         }));
 
         function handleNavigationChange(navState: any) {
+            console.log('WebViewScreen URL:', navState.url, 'title:', title);
             setCanGoBack(navState.canGoBack);
 
             if (navState.url.includes('myrecsports/index.php')) {
-                if (title === 'Reserve') {
+                if (title === 'Reserve Courts') {
                     router.push('/(tabs)/myreservations');
                     setTimeout(() => {
                         webviewRef.current?.injectJavaScript(`

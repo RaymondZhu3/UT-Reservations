@@ -1,8 +1,9 @@
-import { View, Text, StyleSheet, TouchableOpacity,
-         ScrollView, Alert, RefreshControl, ActivityIndicator } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, ScrollView, 
+         Alert, RefreshControl, ActivityIndicator, ActionSheetIOS } from 'react-native';
 import { WebView } from 'react-native-webview';
 import { useRouter } from 'expo-router';
 import { useReservations } from '@/context/ReservationsContext';
+import { scheduleReservationReminder, cancelReminder } from '@/hooks/useNotifications';
 import { useRef, useState, useEffect } from 'react';
 import * as SecureStore from 'expo-secure-store';
 
@@ -91,7 +92,7 @@ type SessionState = 'unknown' | 'valid' | 'invalid';
 
 export default function HomeScreen() {
     const router = useRouter();
-    const { upcoming, past, setReservations } = useReservations();
+    const { upcoming, past, setReservations, notificationIds, setNotificationId, removeNotificationId } = useReservations();
     const webviewRef = useRef<WebView>(null);
     const [loading, setLoading] = useState(true);
     const [refreshing, setRefreshing] = useState(false);
@@ -162,11 +163,37 @@ export default function HomeScreen() {
         }
     }
 
+    function handleCancel(cancelUrl: string, facility: string, time: string) {
+        Alert.alert(
+            'Cancel Reservation',
+            `Cancel ${formatFacility(facility)} at ${time}?`,
+            [
+                { text: 'Keep it', style: 'cancel' },
+                {
+                    text: 'Cancel reservation',
+                    style: 'destructive',
+                    onPress: async () => {
+                        const notifId = notificationIds[cancelUrl];
+                        if (notifId) {
+                            await cancelReminder(notifId);
+                            removeNotificationId(cancelUrl);
+                        }
+
+                        webviewRef.current?.injectJavaScript(`
+                            window.location.href = '${cancelUrl}';
+                            true;
+                        `);
+                    }
+                }
+            ]
+        );
+    }
+
     const greeting = () => {
         const hour = new Date().getHours();
-        if (hour < 12) return 'Good morning';
-        if (hour < 17) return 'Good afternoon';
-        return 'Good evening';
+        if (hour < 12) return 'Good Morning';
+        if (hour < 17) return 'Good Afternoon';
+        return 'Good Evening';
     };
 
     // Show nothing while checking auth
@@ -250,27 +277,57 @@ export default function HomeScreen() {
                                 <View style={styles.buttonRow}>
                                     <TouchableOpacity
                                         style={styles.btnGhost}
-                                        onPress={() => Alert.alert(
-                                            '🔔 Reminder set',
-                                            `We'll remind you 1 hour before your ${res.time} reservation`
-                                        )}
+                                        onPress={() => {
+                                            ActionSheetIOS.showActionSheetWithOptions(
+                                                {
+                                                    title: `Remind me before ${formatFacility(res.facility)}`,
+                                                    options: ['Cancel', '15 minutes before', '1 hour before', '2 hours before', 'Custom...'],
+                                                    cancelButtonIndex: 0,
+                                                },
+                                                async (buttonIndex) => {
+                                                    const minutesMap: Record<number, number> = { 1: 15, 2: 60, 3: 120 };
+                                                    
+                                                    if (buttonIndex === 0) return;
+                                                    
+                                                    if (buttonIndex === 4) {
+                                                        // Custom
+                                                        Alert.prompt(
+                                                            'Custom reminder',
+                                                            'How many minutes before?',
+                                                            async (input) => {
+                                                                const mins = parseInt(input);
+                                                                if (!mins || mins <= 0) return;
+                                                                const id = await scheduleReservationReminder(
+                                                                    formatFacility(res.facility), res.date, res.time, res.court, mins
+                                                                );
+                                                                if (id) {
+                                                                    setNotificationId(res.cancelUrl, id);
+                                                                    Alert.alert('Reminder set', `We'll remind you ${mins} minutes before`);
+                                                                }
+                                                            },
+                                                            'plain-text',
+                                                            '60'
+                                                        );
+                                                        return;
+                                                    }
+
+                                                    const mins = minutesMap[buttonIndex];
+                                                    const id = await scheduleReservationReminder(
+                                                        formatFacility(res.facility), res.date, res.time, res.court, mins
+                                                    );
+                                                    if (id) {
+                                                        setNotificationId(res.cancelUrl, id);
+                                                        Alert.alert('Reminder set', `We'll remind you ${mins === 15 ? '15 minutes' : mins === 60 ? '1 hour' : '2 hours'} before`);
+                                                    }
+                                                }
+                                            );
+                                        }}
                                     >
                                         <Text style={styles.btnGhostText}>Remind me</Text>
                                     </TouchableOpacity>
                                     <TouchableOpacity
                                         style={styles.btnRed}
-                                        onPress={() => Alert.alert(
-                                            'Cancel Reservation',
-                                            `Cancel ${formatFacility(res.facility)} at ${res.time}?`,
-                                            [
-                                                { text: 'Keep it', style: 'cancel' },
-                                                {
-                                                    text: 'Cancel reservation',
-                                                    style: 'destructive',
-                                                    onPress: () => router.push('/(tabs)/myreservations')
-                                                }
-                                            ]
-                                        )}
+                                        onPress={() => handleCancel(res.cancelUrl, res.facility, res.time)}
                                     >
                                         <Text style={styles.btnRedText}>Cancel</Text>
                                     </TouchableOpacity>
