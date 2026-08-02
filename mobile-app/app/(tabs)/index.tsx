@@ -4,6 +4,8 @@ import { WebView } from 'react-native-webview';
 import { useRouter } from 'expo-router';
 import { useReservations } from '@/context/ReservationsContext';
 import { scheduleReservationReminder, cancelReminder } from '@/hooks/useNotifications';
+import { useFacilityOverview } from '@/hooks/useFacilityOverview';
+import { timeAgo } from '@/lib/dates';
 import { useRef, useState, useEffect } from 'react';
 import * as SecureStore from 'expo-secure-store';
 
@@ -93,6 +95,7 @@ type SessionState = 'unknown' | 'valid' | 'invalid';
 export default function HomeScreen() {
     const router = useRouter();
     const { upcoming, past, setReservations, notificationIds, setNotificationId, removeNotificationId } = useReservations();
+    const { rows: openNowRows } = useFacilityOverview();
     const webviewRef = useRef<WebView>(null);
     const [loading, setLoading] = useState(true);
     const [refreshing, setRefreshing] = useState(false);
@@ -236,6 +239,32 @@ export default function HomeScreen() {
                 {showUpdated && (
                     <View style={styles.updatedBanner}>
                         <Text style={styles.updatedText}>✓ Up to date</Text>
+                    </View>
+                )}
+
+                {openNowRows.length > 0 && (
+                    <View style={styles.section}>
+                        <Text style={styles.sectionLabel}>Open now</Text>
+                        {openNowRows.map(row => (
+                            <TouchableOpacity
+                                key={row.facility_id}
+                                style={styles.card}
+                                onPress={() => router.push('/(tabs)/courts')}
+                            >
+                                <View style={styles.cardRow}>
+                                    <Text style={styles.cardTitle}>{row.facility_name}</Text>
+                                    <Text style={row.slots.length > 0 ? styles.openCount : styles.openCountMuted}>
+                                        {row.slots.length > 0 ? `${row.slots.length} open` : '0 open'}
+                                    </Text>
+                                </View>
+                                <Text style={styles.cardSub}>
+                                    {row.slots.length > 0
+                                        ? `Open at ${row.slots.slice(0, 3).map(s => s.time).join(', ')}${row.slots.length > 3 ? ` +${row.slots.length - 3} more` : ''}`
+                                        : 'No open slots as of last check'}
+                                    {'  ·  '}Updated {timeAgo(row.updated_at)}
+                                </Text>
+                            </TouchableOpacity>
+                        ))}
                     </View>
                 )}
 
@@ -424,6 +453,8 @@ const styles = StyleSheet.create({
     badgeText: { fontSize: 11, fontWeight: '600' },
     badgeTextGreen: { color: '#3B6D11' },
     badgeTextRed: { color: '#854F0B' },
+    openCount: { fontSize: 11, fontWeight: '600', color: '#3B6D11' },
+    openCountMuted: { fontSize: 11, fontWeight: '600', color: '#aaa' },
     btnOrange: {
         backgroundColor: '#BF5700', borderRadius: 8,
         paddingVertical: 8, paddingHorizontal: 14,

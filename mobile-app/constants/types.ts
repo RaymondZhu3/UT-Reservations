@@ -5,3 +5,32 @@ export interface FacilityHours {
     saturday: string;
     sunday: string;
 }
+
+// A single open, bookable slot found on reserve_courts.php for one facility.
+export interface CourtSlot {
+    court: string;      // e.g. "GRE - RB - 01"
+    time: string;       // column header text, e.g. "2:00 PM"
+    bookUrl: string;    // reserve_courts.php?id=XXXX&reservationAction=reserve&courtType=XX
+}
+
+// Scrape result for one facility (one hidden WebView).
+export interface FacilityAvailability {
+    facilityId: number;
+    facilityName: string;
+    slots: CourtSlot[];
+    loading: boolean;
+    error?: string;
+}
+
+// A row from Supabase's facility_availability table — the crowdsourced
+// read model. Field names match the Postgres columns (snake_case) since
+// this comes straight back from supabase-js, unlike the camelCase types
+// above which are internal to the on-device scraper. Keyed by
+// (facility_id, date) — one row per facility per day.
+export interface FacilityOverviewRow {
+    facility_id: number;
+    facility_name: string;
+    date: string;       // "YYYY-MM-DD"
+    slots: CourtSlot[];
+    updated_at: string;
+}
