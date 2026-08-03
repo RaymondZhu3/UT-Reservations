@@ -1,9 +1,10 @@
 import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Alert, ActivityIndicator } from 'react-native';
 import { WebView } from 'react-native-webview';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { useMemo, useState } from 'react';
+import { useMemo, useState, useEffect, useRef } from 'react';
 import { useCourtAvailability } from '@/hooks/useCourtAvailability';
 import { dateLabel } from '@/lib/dates';
+import { debugLog } from '@/lib/debugLog';
 import type { CourtSlot } from '@/constants/types';
 
 export default function CourtAvailabilityScreen() {
@@ -18,7 +19,17 @@ export default function CourtAvailabilityScreen() {
     const parsedDate = useMemo(() => new Date(date), [date]);
     const facilityIds = useMemo(() => [parsedFacilityId], [parsedFacilityId]);
 
-    const { availability, scrapers } = useCourtAvailability({ facilityIds, date: parsedDate });
+    // Flip to false once the scraper's selectors are confirmed working —
+    // this makes the normally-hidden WebView visible so you can see and
+    // screenshot exactly what reserve_courts.php loads with the current
+    // facility_id/date params.
+    const DEBUG_VISIBLE_SCRAPER = false;
+
+    const { availability, scrapers } = useCourtAvailability({
+        facilityIds,
+        date: parsedDate,
+        debugVisible: DEBUG_VISIBLE_SCRAPER,
+    });
     const result = availability[0];
 
     // Set once the user confirms a slot — mounting this WebView is what
@@ -28,23 +39,68 @@ export default function CourtAvailabilityScreen() {
     // watching for UT's own post-action redirect.
     const [bookingSlot, setBookingSlot] = useState<CourtSlot | null>(null);
 
+    // Set true to visually inspect the booking WebView (same trick as
+    // AvailabilityScraper.tsx's debugVisible).
+    const DEBUG_VISIBLE_BOOKING = false;
+
+    const bookingTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+    function clearBookingTimeout() {
+        if (bookingTimeoutRef.current) {
+            clearTimeout(bookingTimeoutRef.current);
+            bookingTimeoutRef.current = null;
+        }
+    }
+
+    // Fallback in case handleBookingNavChange never sees a recognized
+    // redirect (error page, re-auth, etc.) — without this the UI could
+    // spin on "Booking your court..." forever with no indication anything
+    // went wrong.
+    useEffect(() => {
+        if (!bookingSlot) return;
+        bookingTimeoutRef.current = setTimeout(() => {
+            debugLog('Booking WebView — timed out waiting for a recognized redirect');
+            setBookingSlot(null);
+            Alert.alert(
+                "Still processing?",
+                "We couldn't confirm whether that booking went through. Check My Reservations, or try again.",
+                [
+                    { text: 'Check My Reservations', onPress: () => router.replace('/(tabs)/myreservations') },
+                    { text: 'OK', style: 'cancel' },
+                ]
+            );
+        }, 15000);
+        return clearBookingTimeout;
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [bookingSlot]);
+
     function confirmBooking(slot: CourtSlot) {
         Alert.alert(
             'Book this court?',
             `${facilityName}\n${slot.court} · ${slot.time}`,
             [
                 { text: 'Cancel', style: 'cancel' },
-                { text: 'Book', onPress: () => setBookingSlot(slot) },
+                {
+                    text: 'Book', onPress: () => {
+                        debugLog('User confirmed booking:', facilityName, slot.court, slot.time, slot.bookUrl);
+                        setBookingSlot(slot);
+                    }
+                },
             ]
         );
     }
 
     function handleBookingNavChange(navState: any) {
+        debugLog('Booking WebView nav:', navState.url, 'loading:', navState.loading);
         if (navState.url.includes('idp/profile/SAML2')) {
+            debugLog('Booking WebView — session expired mid-booking');
+            clearBookingTimeout();
             router.replace('/login');
             return;
         }
         if (navState.url.includes('myrecsports/index.php')) {
+            debugLog('Booking WebView — success redirect seen, navigating to My Reservations');
+            clearBookingTimeout();
             router.replace('/(tabs)/myreservations');
         }
     }
@@ -95,10 +151,16 @@ export default function CourtAvailabilityScreen() {
                 <View style={styles.bookingOverlay}>
                     <ActivityIndicator color="white" />
                     <Text style={styles.bookingText}>Booking your court…</Text>
-                    <View style={{ height: 0, width: 0, overflow: 'hidden' }}>
+                    {/* Never let the WebView's own rendered size hit zero in
+                        either axis (stalls navigation, not just innerText) —
+                        clip via the wrapper only, keep the WebView at a real
+                        non-zero height. */}
+                    <View style={DEBUG_VISIBLE_BOOKING ? { height: 400, width: '100%', backgroundColor: 'white' } : { height: 0, overflow: 'hidden' }}>
                         <WebView
                             source={{ uri: bookingSlot.bookUrl }}
                             onNavigationStateChange={handleBookingNavChange}
+                            style={DEBUG_VISIBLE_BOOKING ? { flex: 1 } : { height: 1 }}
+                            cacheEnabled={false}
                         />
                     </View>
                 </View>

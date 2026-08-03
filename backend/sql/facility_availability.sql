@@ -34,3 +34,11 @@ create policy "public can update availability"
     for update
     using (true)
     with check (true);
+
+-- Missing originally — without this, RLS silently denies deletes (no
+-- error, just zero rows affected), which is why test_availability_write.py's
+-- cleanup step didn't actually remove its test row last time.
+create policy "public can delete availability"
+    on facility_availability
+    for delete
+    using (true);

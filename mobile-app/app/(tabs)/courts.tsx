@@ -4,6 +4,7 @@ import { useMemo, useState } from 'react';
 import { FACILITIES_BY_SPORT } from '@/constants/facilities';
 import { useFacilityOverview } from '@/hooks/useFacilityOverview';
 import { upcomingDates, dateLabel, toIsoDateString } from '@/lib/dates';
+import { debugLog } from '@/lib/debugLog';
 
 export default function CourtsTab() {
     const router = useRouter();
@@ -19,6 +20,7 @@ export default function CourtsTab() {
     }
 
     function openFacility(facilityId: number, facilityName: string) {
+        debugLog('Courts — opened facility', facilityName, 'date:', toIsoDateString(selectedDate));
         router.push({
             pathname: '/court-availability',
             params: {
@@ -102,11 +104,17 @@ const styles = StyleSheet.create({
         backgroundColor: 'white', borderBottomWidth: 1, borderBottomColor: '#eee',
     },
     title: { fontSize: 20, fontWeight: 'bold', color: '#BF5700' },
-    dateRow: { backgroundColor: 'white', borderBottomWidth: 1, borderBottomColor: '#eee' },
-    dateRowContent: { paddingHorizontal: 16, paddingVertical: 10, gap: 8 },
+    // Explicit height is required here — a horizontal ScrollView with no
+    // height constraint stretches to fill the remaining flex space in its
+    // column parent, and its row-direction children stretch to match
+    // (default cross-axis alignItems is 'stretch'). That's what made the
+    // date chips render as full-height bars instead of small pills.
+    dateRow: { height: 56, flexGrow: 0, backgroundColor: 'white', borderBottomWidth: 1, borderBottomColor: '#eee' },
+    dateRowContent: { paddingHorizontal: 16, alignItems: 'center', gap: 8 },
     dateChip: {
+        alignSelf: 'center',
         paddingHorizontal: 14, paddingVertical: 8, borderRadius: 20,
-        borderWidth: 1, borderColor: '#e5e5e5', marginRight: 8,
+        borderWidth: 1, borderColor: '#e5e5e5',
     },
     dateChipActive: { backgroundColor: '#BF5700', borderColor: '#BF5700' },
     dateChipText: { fontSize: 13, color: '#444' },

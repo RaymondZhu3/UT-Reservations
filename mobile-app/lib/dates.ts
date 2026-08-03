@@ -10,6 +10,28 @@ export function toUtDateString(date: Date): string {
     return `${mm}/${dd}/${yyyy}`;
 }
 
+// Inverse of toUtDateString — parses UT's "MM/DD/YYYY" reservation dates
+// back into a Date. Used anywhere reservation data (scraped from
+// myreservations.php) needs to be compared, labeled, or scheduled against.
+export function parseUtDateString(raw: string): Date {
+    const [mm, dd, yyyy] = raw.split('/');
+    return new Date(`${yyyy}-${mm}-${dd}`);
+}
+
+// Parses UT's "2:00 PM" time strings into 24-hour hours/minutes. Shared by
+// anything that needs to combine a reservation's date + time into one
+// timestamp — reminder scheduling (useNotifications.ts) and chronological
+// sorting (lib/reservations.ts) both used to parse this out themselves.
+export function parseUtTime(time: string): { hours: number; minutes: number } {
+    const [timePart, meridiem] = time.split(' ');
+    const [hoursStr, minutesStr] = timePart.split(':');
+    let hours = parseInt(hoursStr, 10);
+    const minutes = parseInt(minutesStr, 10);
+    if (meridiem === 'PM' && hours !== 12) hours += 12;
+    if (meridiem === 'AM' && hours === 12) hours = 0;
+    return { hours, minutes };
+}
+
 export function toIsoDateString(date: Date): string {
     const mm = String(date.getMonth() + 1).padStart(2, '0');
     const dd = String(date.getDate()).padStart(2, '0');

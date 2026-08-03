@@ -1,95 +1,100 @@
-import WebViewScreen, { WebViewScreenHandle } from '@/components/WebViewScreen';
+import { View, Text, StyleSheet, TouchableOpacity, ScrollView, RefreshControl, ActivityIndicator } from 'react-native';
+import { useRouter, useFocusEffect } from 'expo-router';
+import { useCallback } from 'react';
 import { useReservations } from '@/context/ReservationsContext';
-import { useRef, useCallback } from 'react';
-import { useFocusEffect } from 'expo-router';
+import { sortReservationsByDate } from '@/lib/reservations';
+import { debugLog } from '@/lib/debugLog';
+import ReservationCard from '@/components/ReservationCard';
 
-const MY_RESERVATIONS_URL = 'https://apps.rs.utexas.edu/app/myrecsports/myreservations.php';
-
-// This JS runs on the My Reservations page
-// It reads the reservation table and sends data back
-const SCRAPE_JS = `
-    (function() {
-        try {
-            var upcoming = [];
-            var past = [];
-
-            // Each reservation is a card inside .card-body .row
-            var cards = document.querySelectorAll('.card-body .card');
-            
-            cards.forEach(function(card) {
-                var header = card.querySelector('.card-header');
-                if (!header) return;
-
-                // Get all text lines from the card header
-                var lines = header.innerText.trim().split('\\n')
-                    .map(function(l) { return l.trim(); })
-                    .filter(function(l) { return l.length > 0; });
-
-                // lines[0] = facility e.g. "GRE - RB - 01"
-                // lines[1] = date e.g. "05/22/2026"
-                // lines[2] = time e.g. "2:00 PM"
-                if (lines.length < 3) return;
-
-                var cancelLink = card.querySelector('a[href*="reservationAction=release"]');
-                var cancelUrl = cancelLink ? cancelLink.href : '';
-
-                upcoming.push({
-                    facility: lines[0],
-                    date: lines[1],
-                    time: lines[2],
-                    court: lines[0],
-                    cancelUrl: cancelUrl
-                });
-            });
-
-            window.ReactNativeWebView.postMessage(JSON.stringify({
-                type: 'reservations',
-                upcoming: upcoming,
-                past: past
-            }));
-
-        } catch(e) {
-            window.ReactNativeWebView.postMessage(JSON.stringify({
-                type: 'error',
-                message: e.toString()
-            }));
-        }
-    })();
-    true;
-`;
-
+// The full reservation manager — every upcoming booking, sorted soonest
+// first, each with its own Remind/Cancel. Home only ever shows the single
+// next one; this is where you come to check or manage everything you've
+// got booked. Reads the same ReservationsContext the home screen does, so
+// there's no separate scrape happening here — same WebView, same data.
 export default function MyReservationsTab() {
-    const { setReservations } = useReservations();
-    const screenRef = useRef<WebViewScreenHandle>(null);
+    const { upcoming, loading, refreshing, refresh } = useReservations();
+    const router = useRouter();
+    const sorted = sortReservationsByDate(upcoming);
 
+    // Refresh on every focus, no "skip on first focus" guard — that guard
+    // used to skip exactly the focus that mattered (the auto-redirect right
+    // after booking a court is usually the tab's first focus). Retries at
+    // +2s/4s/7s ride out UT's server-side propagation delay after a
+    // booking/cancel. Full history: context.md section 6.
     useFocusEffect(
         useCallback(() => {
-            screenRef.current?.reload();
+            refresh();
+            const retryDelaysMs = [2000, 4000, 7000];
+            const timeouts = retryDelaysMs.map(delay => setTimeout(() => {
+                debugLog(`My Reservations retry refresh (+${delay}ms)`);
+                refresh();
+            }, delay));
+            return () => timeouts.forEach(clearTimeout);
+            // eslint-disable-next-line react-hooks/exhaustive-deps
         }, [])
     );
 
-    function handleMessage(data: string) {
-        try {
-            const parsed = JSON.parse(data);
-            console.log('Reservations scraped:', JSON.stringify(parsed, null, 2));
-            
-            if (parsed.type === 'reservations') {
-                setReservations(parsed.upcoming, parsed.past);
-            } else if (parsed.type === 'error') {
-                console.log('Scrape error:', parsed.message);
-            }
-        } catch (e) {
-            console.log('Parse error:', e);
-        }
-    }
-
     return (
-        <WebViewScreen
-            ref={screenRef}
-            url={MY_RESERVATIONS_URL}
-            title="My Bookings"
-            scrapeJs={SCRAPE_JS}
-            onMessage={handleMessage}
-        />
+        <View style={styles.container}>
+            <View style={styles.header}>
+                <Text style={styles.title}>My Reservations</Text>
+                <Text style={styles.subtitle}>
+                    {loading ? 'Checking...' : sorted.length > 0 ? `${sorted.length} upcoming` : 'Nothing booked'}
+                </Text>
+            </View>
+
+            <ScrollView
+                contentContainerStyle={styles.scrollContent}
+                refreshControl={
+                    <RefreshControl
+                        refreshing={refreshing}
+                        onRefresh={() => { debugLog('My Reservations — manual pull-to-refresh'); refresh(); }}
+                        tintColor="#BF5700"
+                    />
+                }
+            >
+                {loading ? (
+                    <View style={styles.centered}>
+                        <ActivityIndicator color="#BF5700" />
+                        <Text style={styles.mutedText}>Loading reservations…</Text>
+                    </View>
+                ) : sorted.length === 0 ? (
+                    <View style={styles.centered}>
+                        <Text style={styles.mutedText}>No upcoming reservations</Text>
+                        <TouchableOpacity
+                            style={styles.btnOrange}
+                            onPress={() => router.push('/(tabs)/courts')}
+                        >
+                            <Text style={styles.btnOrangeText}>Book a court →</Text>
+                        </TouchableOpacity>
+                    </View>
+                ) : (
+                    sorted.map(reservation => (
+                        <ReservationCard
+                            key={reservation.cancelUrl || `${reservation.date}-${reservation.time}`}
+                            reservation={reservation}
+                        />
+                    ))
+                )}
+            </ScrollView>
+        </View>
     );
 }
+
+const styles = StyleSheet.create({
+    container: { flex: 1, backgroundColor: '#f5f5f5' },
+    header: {
+        paddingTop: 56, paddingHorizontal: 16, paddingBottom: 14,
+        backgroundColor: 'white', borderBottomWidth: 1, borderBottomColor: '#eee',
+    },
+    title: { fontSize: 20, fontWeight: '700', color: '#BF5700' },
+    subtitle: { fontSize: 13, color: '#888', marginTop: 2 },
+    scrollContent: { padding: 16, paddingBottom: 40, flexGrow: 1 },
+    centered: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: 12, paddingTop: 60 },
+    mutedText: { fontSize: 14, color: '#aaa' },
+    btnOrange: {
+        backgroundColor: '#BF5700', borderRadius: 8,
+        paddingVertical: 10, paddingHorizontal: 16,
+    },
+    btnOrangeText: { color: 'white', fontSize: 14, fontWeight: '600' },
+});

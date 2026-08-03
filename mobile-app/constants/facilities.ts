@@ -12,10 +12,9 @@ export const FACILITIES: Record<string, number> = {
     'Whitaker - Pickleball/Tennis': 65,
 };
 
-// Facility code (as it appears in court labels like "GRE - RB - 01") -> full name.
-// Same map used in app/(tabs)/index.tsx's formatFacility — duplicated here so
-// this module has no dependency on a screen file. Keep both in sync if UT
-// adds a facility.
+// Facility code (as it appears in court labels like "GRE - RB - 01") -> full
+// name. Single source of truth — lib/reservations.ts's formatFacility()
+// imports this rather than keeping its own copy.
 export const FACILITY_CODE_MAP: Record<string, string> = {
     GRE: 'Gregory Gym',
     CCF: 'Caven-Clark',

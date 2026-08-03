@@ -1,4 +1,5 @@
 import * as Notifications from 'expo-notifications';
+import { parseUtDateString, parseUtTime } from '@/lib/dates';
 
 // This tells the app how to display notifications when it's in the foreground
 // (when the user has the app open)
@@ -41,17 +42,8 @@ export async function scheduleReservationReminder(
     }
 
     // Convert "05/22/2026" + "2:00 PM" into a JavaScript Date
-    const parts = date.split('/');
-    const dateStr = `${parts[2]}-${parts[0]}-${parts[1]}`; // YYYY-MM-DD
-    // Parse "2:00 PM" into hours and minutes
-    const [timePart, meridiem] = time.split(' ');
-    const [hoursStr, minutesStr] = timePart.split(':');
-    let hours = parseInt(hoursStr);
-    const minutes = parseInt(minutesStr);
-    if (meridiem === 'PM' && hours !== 12) hours += 12;
-    if (meridiem === 'AM' && hours === 12) hours = 0;
-
-    const reservationDate = new Date(`${dateStr}T00:00:00`);
+    const { hours, minutes } = parseUtTime(time);
+    const reservationDate = parseUtDateString(date);
     reservationDate.setHours(hours, minutes, 0, 0);
     
     // Schedule notification according to ActionSheet

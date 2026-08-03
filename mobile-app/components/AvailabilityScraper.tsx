@@ -6,14 +6,11 @@ import type { CourtSlot } from '@/constants/types';
 
 const RESERVE_URL = 'https://apps.rs.utexas.edu/app/myrecsports/reserve_courts.php';
 
-// NOTE: This assumes reserve_courts.php renders a single <table> where each
-// column is a time slot (labelled in the header row) and each row is a
-// court. Open slots are <td class="success"> containing a link whose href
-// has reservationAction=reserve — that part is confirmed in context.md.
-// The header/column-index assumption is NOT confirmed against the live
-// (authenticated) page — load this in a facility tab and console.log the
-// scrape result once to check `time` values look right, and adjust the
-// selectors below if the real markup differs.
+// Table orientation: rows = time slots, columns = courts. Header row is
+// [ "Time", "A", "B", ... ] — first cell is just a label, the rest are
+// court names. Each body row is [ time, courtACell, courtBCell, ... ].
+// Open slots are <td class="success"> containing a link whose href has
+// reservationAction=reserve.
 function buildScrapeJs(facilityId: number) {
     return `
         (function() {
@@ -21,12 +18,12 @@ function buildScrapeJs(facilityId: number) {
                 var table = document.querySelector('table');
                 if (!table) throw new Error('no table found on page');
 
-                // Header row gives us the time label for each column index.
+                // Header row: first cell is the "Time" column label, the
+                // rest are court names, one per column index.
                 var headerRow = table.querySelector('thead tr') || table.querySelector('tr');
-                var headerCells = headerRow ? headerRow.querySelectorAll('th, td') : [];
-                var times = [];
-                headerCells.forEach(function(cell) {
-                    times.push(cell.innerText.trim());
+                var headerCells = headerRow ? Array.prototype.slice.call(headerRow.querySelectorAll('th, td')) : [];
+                var courtNames = headerCells.slice(1).map(function(cell) {
+                    return cell.innerText.trim();
                 });
 
                 // Body rows — fall back to "every row after the first" if
@@ -39,16 +36,17 @@ function buildScrapeJs(facilityId: number) {
 
                 var slots = [];
                 bodyRows.forEach(function(row) {
-                    var courtCell = row.querySelector('th') || row.querySelector('td');
-                    var courtName = courtCell ? courtCell.innerText.trim() : '';
-                    var cells = row.querySelectorAll('td');
-                    cells.forEach(function(cell, idx) {
+                    var cells = Array.prototype.slice.call(row.querySelectorAll('th, td'));
+                    if (cells.length === 0) return;
+                    var time = cells[0].innerText.trim();
+                    var courtCells = cells.slice(1);
+                    courtCells.forEach(function(cell, idx) {
                         if (!cell.classList.contains('success')) return;
                         var link = cell.querySelector('a[href*="reservationAction=reserve"]');
                         if (!link) return;
                         slots.push({
-                            court: courtName,
-                            time: times[idx] || '',
+                            court: courtNames[idx] || '',
+                            time: time,
                             bookUrl: link.href
                         });
                     });
@@ -76,6 +74,11 @@ type Props = {
     date: Date;
     onResult: (facilityId: number, slots: CourtSlot[]) => void;
     onError: (facilityId: number, message: string) => void;
+    // Debug only: renders the WebView at full size instead of hidden, so
+    // you can actually see the page reserve_courts.php loads with the
+    // current facility_id/date params. Flip this on temporarily when
+    // results look wrong — real markup beats guessing at selectors again.
+    debugVisible?: boolean;
 };
 
 export type AvailabilityScraperHandle = {
@@ -87,22 +90,16 @@ export type AvailabilityScraperHandle = {
 // the home screen for myreservations.php — this does the same thing for
 // reserve_courts.php.
 //
-// Two things here are unverified against the live site (see
-// AvailabilityScraper caveat above, and backend/scraper.py which uses
-// `facility_id` rather than `fid`):
-// 1. Query param is `facility_id`, matching backend/scraper.py's confirmed
-//    working scraper — NOT the `fid` this component originally shipped with.
-// 2. `date=MM/DD/YYYY` is a best guess for how to request a specific day.
-//    UT's page may use a different param name, a different date format, or
-//    require clicking a day-forward control instead of a URL param. Test
-//    against the real (authenticated) page and adjust buildUrl() below.
+// CONFIRMED on-device: facility_id=<id>&date=MM/DD/YYYY correctly loads
+// the requested facility and day — the real page's Location dropdown and
+// Date field both matched what was requested.
 function buildUrl(facilityId: number, date: Date): string {
     const dateParam = toUtDateString(date);
     return `${RESERVE_URL}?facility_id=${facilityId}&date=${encodeURIComponent(dateParam)}`;
 }
 
 const AvailabilityScraper = forwardRef<AvailabilityScraperHandle, Props>(
-    ({ facilityId, date, onResult, onError }, ref) => {
+    ({ facilityId, date, onResult, onError, debugVisible }, ref) => {
         const webviewRef = useRef<WebView>(null);
 
         useImperativeHandle(ref, () => ({
@@ -126,14 +123,25 @@ const AvailabilityScraper = forwardRef<AvailabilityScraperHandle, Props>(
             }
         }
 
+        // Only constrain height, not width — innerText (used in
+        // buildScrapeJs above) reflects rendered layout, and a ~0px-wide
+        // WebView collapses the table's text layout even though DOM-only
+        // checks (querySelector/classList) still work. See context.md
+        // section 6.
         return (
-            <View style={{ height: 0, width: 0, overflow: 'hidden' }}>
+            <View style={debugVisible ? { height: 500, width: '100%' } : { height: 0, overflow: 'hidden' }}>
                 <WebView
                     ref={webviewRef}
                     source={{ uri: buildUrl(facilityId, date) }}
                     onLoadEnd={handleLoadEnd}
                     onMessage={handleMessage}
-                    style={{ height: 1, width: 1 }}
+                    style={debugVisible ? { flex: 1 } : { height: 1 }}
+                    // Same reasoning as ReservationsContext's WebView — court
+                    // availability changes constantly, a cached response is
+                    // never the right answer, and reload() (used by
+                    // useCourtAvailability's refresh()) can otherwise serve
+                    // a stale page.
+                    cacheEnabled={false}
                 />
             </View>
         );

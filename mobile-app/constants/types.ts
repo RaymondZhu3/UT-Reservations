@@ -34,3 +34,14 @@ export interface FacilityOverviewRow {
     slots: CourtSlot[];
     updated_at: string;
 }
+
+// A booked reservation scraped from myreservations.php. Moved here from
+// ReservationsContext.tsx so it lives with the other shared types instead
+// of being defined inline in one file and imported everywhere else.
+export interface Reservation {
+    facility: string;   // e.g. "GRE - RB - 01"
+    date: string;       // "MM/DD/YYYY"
+    time: string;       // e.g. "2:00 PM"
+    court: string;      // currently always equal to `facility`
+    cancelUrl: string;
+}

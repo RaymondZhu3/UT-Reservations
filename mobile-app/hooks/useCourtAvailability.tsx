@@ -14,6 +14,8 @@ type Options = {
     // Defaults to today. Passed straight to AvailabilityScraper, which
     // builds it into the page URL.
     date?: Date;
+    // Debug only — see AvailabilityScraper's debugVisible comment.
+    debugVisible?: boolean;
 };
 
 // Runs one hidden WebView per requested facility and aggregates their
@@ -102,6 +104,7 @@ export function useCourtAvailability(options: Options = {}) {
                     date={date}
                     onResult={handleResult}
                     onError={handleError}
+                    debugVisible={options.debugVisible}
                 />
             ))}
         </>
