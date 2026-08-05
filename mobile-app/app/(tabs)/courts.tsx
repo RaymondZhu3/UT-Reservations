@@ -6,6 +6,18 @@ import { useFacilityOverview } from '@/hooks/useFacilityOverview';
 import { upcomingDates, dateLabel, toIsoDateString } from '@/lib/dates';
 import { debugLog } from '@/lib/debugLog';
 
+export function openFacility(router: ReturnType<typeof useRouter>, facilityId: number, facilityName: string, selectedDate: Date) {
+    debugLog('Courts — opened facility', facilityName, 'date:', toIsoDateString(selectedDate));
+    router.push({
+        pathname: '/court-availability',
+        params: {
+            facilityId: String(facilityId),
+            facilityName,
+            date: selectedDate.toISOString(),
+        },
+    });
+}
+
 export default function CourtsTab() {
     const router = useRouter();
     const [selectedDate, setSelectedDate] = useState(() => new Date());
@@ -17,18 +29,6 @@ export default function CourtsTab() {
     function overviewFor(facilityId: number) {
         if (!isToday) return null;
         return todayRows.find(r => r.facility_id === facilityId) ?? null;
-    }
-
-    function openFacility(facilityId: number, facilityName: string) {
-        debugLog('Courts — opened facility', facilityName, 'date:', toIsoDateString(selectedDate));
-        router.push({
-            pathname: '/court-availability',
-            params: {
-                facilityId: String(facilityId),
-                facilityName,
-                date: selectedDate.toISOString(),
-            },
-        });
     }
 
     return (
@@ -69,7 +69,7 @@ export default function CourtsTab() {
                                 <TouchableOpacity
                                     key={id}
                                     style={styles.card}
-                                    onPress={() => openFacility(id, name)}
+                                    onPress={() => openFacility(router, id, name, selectedDate)}
                                 >
                                     <View style={styles.cardRow}>
                                         <Text style={styles.cardTitle}>{name.split(' - ')[0]}</Text>

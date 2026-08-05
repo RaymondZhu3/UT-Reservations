@@ -18,19 +18,15 @@ export default function MyReservationsTab() {
 
     // Refresh on every focus, no "skip on first focus" guard — that guard
     // used to skip exactly the focus that mattered (the auto-redirect right
-    // after booking a court is usually the tab's first focus). Retries at
-    // +2s/4s/7s ride out UT's server-side propagation delay after a
-    // booking/cancel. Full history: context.md section 6.
+    // after booking a court is usually the tab's first focus). Used to also
+    // retry at +2s/4s/7s on the theory that UT's server had a propagation
+    // delay after a booking/cancel — dropped (2026-08-04) after repeated
+    // on-device testing never showed it doing anything; the real fix was
+    // refresh() itself no longer blindly trusting .reload(). Full history:
+    // context.md section 6.
     useFocusEffect(
         useCallback(() => {
             refresh();
-            const retryDelaysMs = [2000, 4000, 7000];
-            const timeouts = retryDelaysMs.map(delay => setTimeout(() => {
-                debugLog(`My Reservations retry refresh (+${delay}ms)`);
-                refresh();
-            }, delay));
-            return () => timeouts.forEach(clearTimeout);
-            // eslint-disable-next-line react-hooks/exhaustive-deps
         }, [])
     );
 

@@ -4,6 +4,7 @@ import { useReservations } from '@/context/ReservationsContext';
 import { useFacilityOverview } from '@/hooks/useFacilityOverview';
 import { sortReservationsByDate } from '@/lib/reservations';
 import { timeAgo } from '@/lib/dates';
+import { openFacility } from './courts';
 import { debugLog } from '@/lib/debugLog';
 import ReservationCard from '@/components/ReservationCard';
 import { useState, useEffect } from 'react';
@@ -73,7 +74,7 @@ export default function HomeScreen() {
                             <TouchableOpacity
                                 key={row.facility_id}
                                 style={styles.card}
-                                onPress={() => router.push('/(tabs)/courts')}
+                                onPress={() => openFacility(router, row.facility_id, row.facility_name, new Date())}
                             >
                                 <View style={styles.cardRow}>
                                     <Text style={styles.cardTitle}>{row.facility_name}</Text>

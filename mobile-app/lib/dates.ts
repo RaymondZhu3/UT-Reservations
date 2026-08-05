@@ -15,7 +15,13 @@ export function toUtDateString(date: Date): string {
 // myreservations.php) needs to be compared, labeled, or scheduled against.
 export function parseUtDateString(raw: string): Date {
     const [mm, dd, yyyy] = raw.split('/');
-    return new Date(`${yyyy}-${mm}-${dd}`);
+    // Build from numeric components rather than a "YYYY-MM-DD" string —
+    // that date-only ISO form parses as UTC midnight, which JS then
+    // renders back in local time and can roll onto the previous day
+    // (e.g. a CDT reservation for the 5th displaying as the 4th). The
+    // (year, month, day) constructor always uses local time, matching
+    // dateLabel's own local "today" comparison.
+    return new Date(Number(yyyy), Number(mm) - 1, Number(dd));
 }
 
 // Parses UT's "2:00 PM" time strings into 24-hour hours/minutes. Shared by
