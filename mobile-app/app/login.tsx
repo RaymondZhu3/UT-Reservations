@@ -3,12 +3,14 @@ import { WebView } from 'react-native-webview';
 import * as SecureStore from 'expo-secure-store';
 import { useRouter } from 'expo-router';
 import { useRef } from 'react';
+import { useReservations } from '@/context/ReservationsContext';
 
 const RESERVATION_URL = 'https://apps.rs.utexas.edu/app/myrecsports/reserve_courts.php';
 
 export default function LoginScreen() {
     const router = useRouter();
     const handled = useRef(false);
+    const { resetSession } = useReservations();
 
     async function handleNavigationChange(navState: any) {
         const { url, loading } = navState;
@@ -17,6 +19,9 @@ export default function LoginScreen() {
 
         handled.current = true;
         await SecureStore.setItemAsync('has_logged_in', 'true');
+        // Clear the provider's 'invalid' session guards — it never unmounts,
+        // so they'd otherwise persist past login and leave Home blank.
+        resetSession();
         router.replace('/(tabs)');
     }
 

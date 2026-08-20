@@ -1,9 +1,16 @@
+// A row from Supabase's facility_hours table, scraped from the PUBLIC
+// utrecsports.org/hours page (no auth involved — see backend/sql/
+// facility_hours.sql). period_label records which date range the hours belong
+// to, because that page is period-scoped and break hours would otherwise be
+// served as permanent.
 export interface FacilityHours {
     facility_name: string;
-    mon_thu: string;
-    friday: string;
-    saturday: string;
-    sunday: string;
+    mon_thu: string | null;
+    friday: string | null;
+    saturday: string | null;
+    sunday: string | null;
+    period_label: string | null;
+    scraped_at: string;
 }
 
 // A single open, bookable slot found on reserve_courts.php for one facility.

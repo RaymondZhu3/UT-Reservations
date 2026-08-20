@@ -8,6 +8,13 @@ import type { Reservation } from '@/constants/types';
 
 const MY_RESERVATIONS_URL = 'https://apps.rs.utexas.edu/app/myrecsports/myreservations.php';
 
+// Hitting this ends UT's own session, not just our local flags. Logging out
+// by only clearing SecureStore leaves the Shibboleth cookie alive in the
+// WebView's cookie store (HttpOnly, so unreachable from JS and from
+// SecureStore both) — the next person to tap Login lands straight in the
+// previous user's account. See context.md section 6.
+const LOGOUT_URL = 'https://apps.rs.utexas.edu/logout';
+
 // Scrapes myreservations.php's reservation cards. Used to be duplicated
 // almost verbatim in both index.tsx and myreservations.tsx, each running
 // its own separate hidden/visible WebView against the same URL. Now there's
@@ -66,6 +73,8 @@ type ReservationsContextType = {
     session: SessionState;
     refresh: () => void;
     cancelReservation: (cancelUrl: string) => void;
+    logout: () => Promise<void>;
+    resetSession: () => void;
     notificationIds: Record<string, string>;
     setNotificationId: (cancelUrl: string, id: string) => void;
     removeNotificationId: (cancelUrl: string) => void;
@@ -78,6 +87,8 @@ const ReservationsContext = createContext<ReservationsContextType>({
     session: 'unknown',
     refresh: () => {},
     cancelReservation: () => {},
+    logout: async () => {},
+    resetSession: () => {},
     notificationIds: {},
     setNotificationId: () => {},
     removeNotificationId: () => {},
@@ -163,6 +174,62 @@ export function ReservationsProvider({ children }: { children: ReactNode }) {
         }, 1500);
     }
 
+    // Ends the UT session server-side before dropping local state. The
+    // WebView navigation has to happen through the shared WebView because
+    // that's where the session cookie lives — clearing SecureStore alone
+    // logs you out of this app but not out of UT.
+    //
+    // NOTE (untested): this is an SP-level logout. Whether it also ends the
+    // Shibboleth IdP session is unverified — if it doesn't, re-login will
+    // silently SSO straight back in with no Duo prompt. Test on device:
+    // log out, log back in, and see whether Duo challenges you.
+    async function logout() {
+        debugLog('logout() — navigating shared WebView to', LOGOUT_URL);
+
+        // Block handleNavigationChange from firing its own redirect while
+        // UT tears the session down; we're already headed to /login.
+        redirectedRef.current = true;
+        sessionRef.current = 'invalid';
+        setSession('invalid');
+        setUpcoming([]);
+
+        webviewRef.current?.injectJavaScript(`
+            window.location.href = '${LOGOUT_URL}';
+            true;
+        `);
+
+        await SecureStore.deleteItemAsync('has_logged_in');
+        await SecureStore.deleteItemAsync('ut_cookies');
+
+        // Let UT's logout actually land before the login screen mounts its
+        // own WebView — same reasoning as cancelReservation()'s delay.
+        setTimeout(() => router.replace('/login'), 1200);
+    }
+
+    // Called by login.tsx after a successful login. This provider lives in
+    // the root layout and never unmounts, so without an explicit reset the
+    // 'invalid' session state and redirectedRef guard set during logout (or
+    // during a session expiry) survive straight through re-login: Home
+    // would return null forever and refresh() would skip every call, until
+    // the app was force-restarted. Same shape of bug as the .reload() saga
+    // — state surviving a transition that looks like it resets everything.
+    function resetSession() {
+        debugLog('resetSession() — clearing session guards after login');
+        redirectedRef.current = false;
+        sessionRef.current = 'unknown';
+        isRefreshingRef.current = false;
+        setSession('unknown');
+        setUpcoming([]);
+        setLoading(true);
+
+        // The shared WebView is parked on the logout/SSO page at this
+        // point, so point it back at the page it's supposed to scrape.
+        webviewRef.current?.injectJavaScript(`
+            window.location.href = '${MY_RESERVATIONS_URL}';
+            true;
+        `);
+    }
+
     function handleLoadEnd() {
         debugLog('Reservations WebView onLoadEnd — injecting scrape JS');
         webviewRef.current?.injectJavaScript(SCRAPE_JS);
@@ -231,7 +298,7 @@ export function ReservationsProvider({ children }: { children: ReactNode }) {
         <ReservationsContext.Provider
             value={{
                 upcoming, loading, refreshing, session,
-                refresh, cancelReservation,
+                refresh, cancelReservation, logout, resetSession,
                 notificationIds, setNotificationId, removeNotificationId,
             }}
         >

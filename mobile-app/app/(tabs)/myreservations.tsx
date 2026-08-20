@@ -5,6 +5,7 @@ import { useReservations } from '@/context/ReservationsContext';
 import { sortReservationsByDate } from '@/lib/reservations';
 import { debugLog } from '@/lib/debugLog';
 import ReservationCard from '@/components/ReservationCard';
+import LogoutButton from '@/components/LogoutButton';
 
 // The full reservation manager — every upcoming booking, sorted soonest
 // first, each with its own Remind/Cancel. Home only ever shows the single
@@ -33,10 +34,15 @@ export default function MyReservationsTab() {
     return (
         <View style={styles.container}>
             <View style={styles.header}>
-                <Text style={styles.title}>My Reservations</Text>
-                <Text style={styles.subtitle}>
-                    {loading ? 'Checking...' : sorted.length > 0 ? `${sorted.length} upcoming` : 'Nothing booked'}
-                </Text>
+                <View style={styles.headerRow}>
+                    <View style={styles.headerText}>
+                        <Text style={styles.title}>My Reservations</Text>
+                        <Text style={styles.subtitle}>
+                            {loading ? 'Checking...' : sorted.length > 0 ? `${sorted.length} upcoming` : 'Nothing booked'}
+                        </Text>
+                    </View>
+                    <LogoutButton />
+                </View>
             </View>
 
             <ScrollView
@@ -83,6 +89,8 @@ const styles = StyleSheet.create({
         paddingTop: 56, paddingHorizontal: 16, paddingBottom: 14,
         backgroundColor: 'white', borderBottomWidth: 1, borderBottomColor: '#eee',
     },
+    headerRow: { flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between' },
+    headerText: { flex: 1 },
     title: { fontSize: 20, fontWeight: '700', color: '#BF5700' },
     subtitle: { fontSize: 13, color: '#888', marginTop: 2 },
     scrollContent: { padding: 16, paddingBottom: 40, flexGrow: 1 },

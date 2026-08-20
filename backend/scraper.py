@@ -1,6 +1,7 @@
 import requests
 import os
 import json
+import re
 from bs4 import BeautifulSoup
 from dotenv import load_dotenv
 from supabase import create_client, Client
@@ -59,30 +60,64 @@ def normalize_hours(raw_text):
         return "Refer to Site"
     return clean_text
 
+# UT's hours page is scoped to a period that changes through the year, and
+# the heading naming it ("August Break Period: 8/15 - 8/22/26") sits outside
+# the table. Without capturing it, break hours get stored as if permanent and
+# keep being served after the period ends. Rather than depend on the page's
+# markup, just find the first date-range-looking string on the page — it
+# survives a redesign that a CSS selector wouldn't.
+PERIOD_RE = re.compile(r"[A-Za-z ]*\d{1,2}/\d{1,2}\s*[-\u2013]\s*\d{1,2}/\d{1,2}(?:/\d{2,4})?")
+
+
+def find_period_label(soup):
+    text = soup.get_text(separator=" ", strip=True)
+    match = PERIOD_RE.search(text)
+    return match.group(0).strip() if match else None
+
+
 def scrape_hours():
     response = requests.get(recsports_hours_url)
 
-    if (response.status_code == 200):
-        soup = BeautifulSoup(response.text, 'html.parser')
-        table = soup.find('tbody')
-
-        for row in table.find_all('tr'):
-            cells = row.find_all('td')
-
-            data = [normalize_hours(cell.get_text(separator=" ; ", strip = True)) for cell in cells]
-
-            save_row = {
-                "facility_name": data[0],
-                "mon_thu": data[1],
-                "friday": data[2],
-                "saturday": data[3],
-                "sunday": data[4]
-            }
-            
-            supabase.table("facility_hours").upsert(save_row, on_conflict="facility_name").execute()
-            print(f"✅ Synced: {data[0]}")
-    else:
+    if response.status_code != 200:
         print(f"Failed to reach UT site. Status Code: {response.status_code}")
+        return
+
+    soup = BeautifulSoup(response.text, 'html.parser')
+    table = soup.find('tbody')
+    if table is None:
+        print("No hours table found — UT may have changed the page structure.")
+        return
+
+    period_label = find_period_label(soup)
+    print(f"Period: {period_label or 'unknown'}")
+
+    scraped_at = datetime.now().astimezone().isoformat()
+    synced = 0
+
+    for row in table.find_all('tr'):
+        cells = row.find_all('td')
+        data = [normalize_hours(cell.get_text(separator=" ; ", strip=True)) for cell in cells]
+
+        # Skip malformed rows rather than IndexError partway through and leave
+        # the table half-updated.
+        if len(data) < 5:
+            continue
+
+        save_row = {
+            "facility_name": data[0],
+            "mon_thu": data[1],
+            "friday": data[2],
+            "saturday": data[3],
+            "sunday": data[4],
+            "period_label": period_label,
+            "scraped_at": scraped_at,
+        }
+
+        supabase.table("facility_hours").upsert(save_row, on_conflict="facility_name").execute()
+        print(f"Synced: {data[0]}")
+        synced += 1
+
+    print(f"Done — {synced} facilities synced.")
 
 def scrape_court_availability():
     for facility_name, facility_id in FACILITIES.items():
@@ -114,6 +149,9 @@ def scrape_court_availability():
 
 
 if __name__ == "__main__":
-    # scrape_hours()
-    get_cookies()
-    scrape_court_availability()
+    # scrape_hours() is the only part of this file that's actually wired into
+    # the app (facility hours on the Courts tab) and the only part that needs
+    # no authentication. scrape_court_availability() is still a stub — court
+    # availability is crowdsourced from real user sessions on-device instead,
+    # deliberately (context.md section 4).
+    scrape_hours()

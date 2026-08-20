@@ -32,14 +32,6 @@ export default function TabLayout() {
                 }}
             />
             <Tabs.Screen
-                name="studyrooms"
-                options={{
-                    title: 'Rooms',
-                    tabBarIcon: ({ color }) => 
-                        <IconSymbol size={28} name="calendar.badge.plus" color={color} />,
-                }}
-            />
-            <Tabs.Screen
                 name="myreservations"
                 options={{
                     title: 'My Reservations',

@@ -3,6 +3,8 @@ import { useRouter } from 'expo-router';
 import { useMemo, useState } from 'react';
 import { FACILITIES_BY_SPORT } from '@/constants/facilities';
 import { useFacilityOverview } from '@/hooks/useFacilityOverview';
+import { useFacilityHours } from '@/hooks/useFacilityHours';
+import { hoursForDay, isClosed } from '@/lib/facilityHours';
 import { upcomingDates, dateLabel, toIsoDateString } from '@/lib/dates';
 import { debugLog } from '@/lib/debugLog';
 
@@ -23,6 +25,7 @@ export default function CourtsTab() {
     const [selectedDate, setSelectedDate] = useState(() => new Date());
     const dates = useMemo(() => upcomingDates(7), []);
     const { rows: todayRows } = useFacilityOverview();
+    const { byFacilityId: hoursByFacility } = useFacilityHours();
 
     const isToday = toIsoDateString(selectedDate) === toIsoDateString(new Date());
 
@@ -65,6 +68,11 @@ export default function CourtsTab() {
                         <Text style={styles.sectionLabel}>{sport}</Text>
                         {facilities.map(({ name, id }) => {
                             const overview = overviewFor(id);
+                            // Hours track the date the user is browsing, not
+                            // today — picking Saturday should show Saturday's.
+                            const hoursRow = hoursByFacility[id];
+                            const hours = hoursRow ? hoursForDay(hoursRow, selectedDate) : null;
+                            const closed = isClosed(hours);
                             return (
                                 <TouchableOpacity
                                     key={id}
@@ -73,7 +81,11 @@ export default function CourtsTab() {
                                 >
                                     <View style={styles.cardRow}>
                                         <Text style={styles.cardTitle}>{name.split(' - ')[0]}</Text>
-                                        <Text style={styles.chevron}>→</Text>
+                                        {hours ? (
+                                            <Text style={closed ? styles.hoursClosed : styles.hours}>{hours}</Text>
+                                        ) : (
+                                            <Text style={styles.chevron}>→</Text>
+                                        )}
                                     </View>
                                     {overview ? (
                                         overview.slots.length > 0 ? (
@@ -135,4 +147,6 @@ const styles = StyleSheet.create({
     cardSub: { fontSize: 12, color: '#3B6D11', marginTop: 4 },
     cardSubMuted: { fontSize: 12, color: '#aaa', marginTop: 4 },
     chevron: { fontSize: 18, color: '#ccc' },
+    hours: { fontSize: 12, color: '#666' },
+    hoursClosed: { fontSize: 12, color: '#b00', fontWeight: '500' },
 });

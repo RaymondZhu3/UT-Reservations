@@ -3,9 +3,39 @@ import { WebView } from 'react-native-webview';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useMemo, useState, useEffect, useRef } from 'react';
 import { useCourtAvailability } from '@/hooks/useCourtAvailability';
-import { dateLabel } from '@/lib/dates';
+import { useReservations } from '@/context/ReservationsContext';
+import { dateLabel, toUtDateString } from '@/lib/dates';
+import { reservationDateLabel } from '@/lib/reservations';
 import { debugLog } from '@/lib/debugLog';
 import type { CourtSlot } from '@/constants/types';
+
+// UT enforces "one reservation per day" server-side. When it rejects a
+// booking it does NOT run the normal reserve_courts.php -> index.php ->
+// myreservations.php redirect chain — it stays put on reserve_courts.php
+// and renders an error banner instead. So the booking WebView sees no
+// recognized navigation at all and would otherwise sit spinning until the
+// 15s timeout, then show an "we couldn't confirm" message, even though UT
+// stated the exact reason immediately. This reads that banner back out.
+const BOOKING_RESULT_JS = `
+    (function() {
+        try {
+            var el = document.querySelector('.alert-danger, .alert, [role="alert"]');
+            var text = el ? (el.innerText || '').trim() : '';
+            if (text) {
+                window.ReactNativeWebView.postMessage(JSON.stringify({
+                    type: 'booking-error',
+                    message: text
+                }));
+            }
+        } catch (e) {
+            window.ReactNativeWebView.postMessage(JSON.stringify({
+                type: 'booking-error',
+                message: ''
+            }));
+        }
+    })();
+    true;
+`;
 
 export default function CourtAvailabilityScreen() {
     const router = useRouter();
@@ -24,6 +54,10 @@ export default function CourtAvailabilityScreen() {
     // screenshot exactly what reserve_courts.php loads with the current
     // facility_id/date params.
     const DEBUG_VISIBLE_SCRAPER = false;
+
+    // Reservations the user already holds — used to catch UT's one-per-day
+    // limit before firing a booking that's guaranteed to be rejected.
+    const { upcoming } = useReservations();
 
     const { availability, scrapers } = useCourtAvailability({
         facilityIds,
@@ -44,6 +78,7 @@ export default function CourtAvailabilityScreen() {
     const DEBUG_VISIBLE_BOOKING = false;
 
     const bookingTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+    const bookingWebviewRef = useRef<WebView>(null);
 
     function clearBookingTimeout() {
         if (bookingTimeoutRef.current) {
@@ -74,7 +109,24 @@ export default function CourtAvailabilityScreen() {
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [bookingSlot]);
 
+    // UT allows one reservation per calendar day. Both dates here are UT's
+    // own MM/DD/YYYY form, so this is a plain string compare — no parsing,
+    // no timezone edge case (see parseUtDateString's writeup in dates.ts).
+    const existingThatDay = upcoming.find(r => r.date === toUtDateString(parsedDate));
+
     function confirmBooking(slot: CourtSlot) {
+        if (existingThatDay) {
+            Alert.alert(
+                'You already have a court that day',
+                `UT allows one reservation per day, and you're booked for ${reservationDateLabel(existingThatDay.date)} at ${existingThatDay.time}. Cancel that one first if you'd rather have this slot.`,
+                [
+                    { text: 'OK', style: 'cancel' },
+                    { text: 'My Reservations', onPress: () => router.push('/(tabs)/myreservations') },
+                ]
+            );
+            return;
+        }
+
         Alert.alert(
             'Book this court?',
             `${facilityName}\n${slot.court} · ${slot.time}`,
@@ -86,6 +138,30 @@ export default function CourtAvailabilityScreen() {
                         setBookingSlot(slot);
                     }
                 },
+            ]
+        );
+    }
+
+    // Fires when UT rejected the booking and stayed on reserve_courts.php.
+    function handleBookingMessage(event: any) {
+        let message = '';
+        try {
+            const parsed = JSON.parse(event.nativeEvent.data);
+            if (parsed.type !== 'booking-error') return;
+            message = parsed.message || '';
+        } catch {
+            return;
+        }
+
+        debugLog('Booking WebView — UT rejected the booking:', message);
+        clearBookingTimeout();
+        setBookingSlot(null);
+        Alert.alert(
+            "Couldn't book that court",
+            message || 'UT rejected the reservation without saying why. Check My Reservations before trying again.',
+            [
+                { text: 'OK', style: 'cancel' },
+                { text: 'My Reservations', onPress: () => router.replace('/(tabs)/myreservations') },
             ]
         );
     }
@@ -126,7 +202,7 @@ export default function CourtAvailabilityScreen() {
                 </View>
             ) : result?.error ? (
                 <View style={styles.centered}>
-                    <Text style={styles.mutedText}>Couldn't load availability. Pull to try again.</Text>
+                    <Text style={styles.mutedText}>Couldn't load availability. Go back and try again.</Text>
                 </View>
             ) : result && result.slots.length === 0 ? (
                 <View style={styles.centered}>
@@ -159,6 +235,14 @@ export default function CourtAvailabilityScreen() {
                         <WebView
                             source={{ uri: bookingSlot.bookUrl }}
                             onNavigationStateChange={handleBookingNavChange}
+                            onLoadEnd={() => {
+                                // innerText needs real layout — this WebView is
+                                // clipped by its wrapper but keeps a non-zero
+                                // height and its natural width, so text reads.
+                                bookingWebviewRef.current?.injectJavaScript(BOOKING_RESULT_JS);
+                            }}
+                            onMessage={handleBookingMessage}
+                            ref={bookingWebviewRef}
                             style={DEBUG_VISIBLE_BOOKING ? { flex: 1 } : { height: 1 }}
                             cacheEnabled={false}
                         />
