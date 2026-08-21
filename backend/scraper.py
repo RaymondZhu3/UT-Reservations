@@ -5,7 +5,6 @@ import re
 from bs4 import BeautifulSoup
 from dotenv import load_dotenv
 from supabase import create_client, Client
-from playwright.sync_api import sync_playwright
 from datetime import datetime
 
 load_dotenv()
@@ -85,7 +84,7 @@ def scrape_hours():
     soup = BeautifulSoup(response.text, 'html.parser')
     table = soup.find('tbody')
     if table is None:
-        print("No hours table found — UT may have changed the page structure.")
+        print("No hours table found.")
         return
 
     period_label = find_period_label(soup)
@@ -132,26 +131,7 @@ def scrape_court_availability():
         # organize time rows into lists
         # update supabase rows 
         # print availability table
-        header_col = table.find_all('tr')
-        
-        for row in header_col:
-            row_data = [td.text.strip() for td in row.find_all('td')]
-            # print(row_data)
-
-# {
-#     "facility_name": "Caven-Clark - Pickleball",
-#     "facility_id": 30,
-#     "date": "05/09/2026",
-#     "time_slot": "4:00 PM",
-#     "court": "4A",
-#     "status": "available"  # or "reserved"
-# }
 
 
 if __name__ == "__main__":
-    # scrape_hours() is the only part of this file that's actually wired into
-    # the app (facility hours on the Courts tab) and the only part that needs
-    # no authentication. scrape_court_availability() is still a stub — court
-    # availability is crowdsourced from real user sessions on-device instead,
-    # deliberately (context.md section 4).
     scrape_hours()

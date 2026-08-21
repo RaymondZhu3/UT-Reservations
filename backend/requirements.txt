@@ -1,0 +1,6 @@
+# Everything scraper.py needs. (login.py / test_session.py also need
+# playwright, but those are exploratory and don't run in CI.)
+requests
+beautifulsoup4
+supabase
+python-dotenv
