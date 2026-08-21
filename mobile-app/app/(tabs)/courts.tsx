@@ -5,7 +5,7 @@ import { FACILITIES_BY_SPORT } from '@/constants/facilities';
 import { useFacilityOverview } from '@/hooks/useFacilityOverview';
 import { useFacilityHours } from '@/hooks/useFacilityHours';
 import { hoursForDay, isClosed } from '@/lib/facilityHours';
-import { upcomingDates, dateLabel, toIsoDateString } from '@/lib/dates';
+import { upcomingDates, dateLabel, toIsoDateString, timeAgo } from '@/lib/dates';
 import { debugLog } from '@/lib/debugLog';
 
 export function openFacility(router: ReturnType<typeof useRouter>, facilityId: number, facilityName: string, selectedDate: Date) {
@@ -25,7 +25,7 @@ export default function CourtsTab() {
     const [selectedDate, setSelectedDate] = useState(() => new Date());
     const dates = useMemo(() => upcomingDates(7), []);
     const { rows: todayRows } = useFacilityOverview();
-    const { byFacilityId: hoursByFacility } = useFacilityHours();
+    const { byFacilityId: hoursByFacility, meta: hoursMeta } = useFacilityHours();
 
     const isToday = toIsoDateString(selectedDate) === toIsoDateString(new Date());
 
@@ -38,6 +38,14 @@ export default function CourtsTab() {
         <View style={styles.container}>
             <View style={styles.header}>
                 <Text style={styles.title}>Find a court</Text>
+                {/* Say which period the hours came from — UT changes them at
+                    break boundaries and a stale row looks identical to a fresh one. */}
+                {hoursMeta.scrapedAt && (
+                    <Text style={styles.headerSub}>
+                        {hoursMeta.periodLabel ? `Hours ${hoursMeta.periodLabel} · ` : 'Hours '}
+                        updated {timeAgo(hoursMeta.scrapedAt)}
+                    </Text>
+                )}
             </View>
 
             <ScrollView
@@ -116,11 +124,7 @@ const styles = StyleSheet.create({
         backgroundColor: 'white', borderBottomWidth: 1, borderBottomColor: '#eee',
     },
     title: { fontSize: 20, fontWeight: 'bold', color: '#BF5700' },
-    // Explicit height is required here — a horizontal ScrollView with no
-    // height constraint stretches to fill the remaining flex space in its
-    // column parent, and its row-direction children stretch to match
-    // (default cross-axis alignItems is 'stretch'). That's what made the
-    // date chips render as full-height bars instead of small pills.
+    headerSub: { fontSize: 11, color: '#999', marginTop: 2, marginBottom: 4 },
     dateRow: { height: 56, flexGrow: 0, backgroundColor: 'white', borderBottomWidth: 1, borderBottomColor: '#eee' },
     dateRowContent: { paddingHorizontal: 16, alignItems: 'center', gap: 8 },
     dateChip: {

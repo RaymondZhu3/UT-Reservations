@@ -3,12 +3,16 @@ import { fetchFacilityHours } from '@/lib/facilityHours';
 import { HOURS_FACILITY_NAMES } from '@/constants/facilities';
 import type { FacilityHours } from '@/constants/types';
 
-// Unlike useFacilityOverview, this has no cold-start problem: the data comes
-// from a scheduled scrape of a public page, so it's populated on day one with
-// zero users. Keyed by the app's facility id rather than by name, since UT's
-// hours page and reserve_courts.php name the same buildings differently.
+// Keyed by facility id, not name — UT names buildings differently on the
+// hours page than on reserve_courts.php.
 export function useFacilityHours() {
     const [byFacilityId, setByFacilityId] = useState<Record<number, FacilityHours>>({});
+    // Every row is written by the same scrape run, so one row's period and
+    // timestamp describe the whole table.
+    const [meta, setMeta] = useState<{ periodLabel: string | null; scrapedAt: string | null }>({
+        periodLabel: null,
+        scrapedAt: null,
+    });
     const [loading, setLoading] = useState(true);
 
     const refresh = useCallback(async () => {
@@ -25,10 +29,14 @@ export function useFacilityHours() {
         });
 
         setByFacilityId(mapped);
+        setMeta({
+            periodLabel: rows[0]?.period_label ?? null,
+            scrapedAt: rows[0]?.scraped_at ?? null,
+        });
         setLoading(false);
     }, []);
 
     useEffect(() => { refresh(); }, [refresh]);
 
-    return { byFacilityId, loading, refresh };
+    return { byFacilityId, meta, loading, refresh };
 }

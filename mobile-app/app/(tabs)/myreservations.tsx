@@ -17,14 +17,7 @@ export default function MyReservationsTab() {
     const router = useRouter();
     const sorted = sortReservationsByDate(upcoming);
 
-    // Refresh on every focus, no "skip on first focus" guard — that guard
-    // used to skip exactly the focus that mattered (the auto-redirect right
-    // after booking a court is usually the tab's first focus). Used to also
-    // retry at +2s/4s/7s on the theory that UT's server had a propagation
-    // delay after a booking/cancel — dropped (2026-08-04) after repeated
-    // on-device testing never showed it doing anything; the real fix was
-    // refresh() itself no longer blindly trusting .reload(). Full history:
-    // context.md section 6.
+    // Refresh on every focus
     useFocusEffect(
         useCallback(() => {
             refresh();

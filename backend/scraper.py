@@ -59,12 +59,8 @@ def normalize_hours(raw_text):
         return "Refer to Site"
     return clean_text
 
-# UT's hours page is scoped to a period that changes through the year, and
-# the heading naming it ("August Break Period: 8/15 - 8/22/26") sits outside
-# the table. Without capturing it, break hours get stored as if permanent and
-# keep being served after the period ends. Rather than depend on the page's
-# markup, just find the first date-range-looking string on the page — it
-# survives a redesign that a CSS selector wouldn't.
+# The heading naming the current period ("8/15 - 8/22/26") sits outside the
+# table. Match the date range itself so a page redesign won't break it.
 PERIOD_RE = re.compile(r"[A-Za-z ]*\d{1,2}/\d{1,2}\s*[-\u2013]\s*\d{1,2}/\d{1,2}(?:/\d{2,4})?")
 
 
@@ -97,8 +93,7 @@ def scrape_hours():
         cells = row.find_all('td')
         data = [normalize_hours(cell.get_text(separator=" ; ", strip=True)) for cell in cells]
 
-        # Skip malformed rows rather than IndexError partway through and leave
-        # the table half-updated.
+        # Skip malformed rows instead of dying halfway through.
         if len(data) < 5:
             continue
 
@@ -134,4 +129,6 @@ def scrape_court_availability():
 
 
 if __name__ == "__main__":
+    # Only scrape_hours() is wired into the app. Court availability is
+    # crowdsourced on-device instead — context.md §4.
     scrape_hours()

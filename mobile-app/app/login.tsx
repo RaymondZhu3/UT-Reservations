@@ -19,8 +19,7 @@ export default function LoginScreen() {
 
         handled.current = true;
         await SecureStore.setItemAsync('has_logged_in', 'true');
-        // Clear the provider's 'invalid' session guards — it never unmounts,
-        // so they'd otherwise persist past login and leave Home blank.
+        // Clear the stale session flags, or Home renders blank after a logout.
         resetSession();
         router.replace('/(tabs)');
     }

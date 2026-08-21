@@ -29,17 +29,9 @@ export const FACILITY_NAMES_BY_ID: Record<number, string> = Object.fromEntries(
     Object.entries(FACILITIES).map(([name, id]) => [id, name])
 );
 
-// UT names the same buildings differently on reserve_courts.php and on the
-// public hours page at utrecsports.org/hours, so joining the two needs an
-// explicit map — string matching would fail on every entry here except
-// Gregory Gym. Note "Caven Clark Courts" has no hyphen on the hours page, and
-// "Recreational Sports Center" is spelled out rather than "RSC"/"Rec Sports
-// Center". Two facility ids can share one building (squash and racquetball
-// courts are both inside Gregory Gym), so this is many-to-one by design.
-//
-// If a facility ever shows no hours in the app, check here first: UT renaming
-// a row on the hours page breaks the join silently, since a missing key just
-// yields no hours rather than an error.
+// UT's hours page names buildings differently than reserve_courts.php, so the
+// join needs this map. If a facility shows no hours, check here first — a
+// renamed row breaks the match silently.
 export const HOURS_FACILITY_NAMES: Record<number, string> = {
     28: 'Bellmont Hall',
     30: 'Caven Clark Courts',

@@ -9,13 +9,9 @@ import { reservationDateLabel } from '@/lib/reservations';
 import { debugLog } from '@/lib/debugLog';
 import type { CourtSlot } from '@/constants/types';
 
-// UT enforces "one reservation per day" server-side. When it rejects a
-// booking it does NOT run the normal reserve_courts.php -> index.php ->
-// myreservations.php redirect chain — it stays put on reserve_courts.php
-// and renders an error banner instead. So the booking WebView sees no
-// recognized navigation at all and would otherwise sit spinning until the
-// 15s timeout, then show an "we couldn't confirm" message, even though UT
-// stated the exact reason immediately. This reads that banner back out.
+// When UT rejects a booking it stays on the same page and shows an error
+// banner instead of redirecting, so no navigation fires and we'd spin until
+// the timeout. This reads the banner so we can show the real reason.
 const BOOKING_RESULT_JS = `
     (function() {
         try {
@@ -109,9 +105,8 @@ export default function CourtAvailabilityScreen() {
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [bookingSlot]);
 
-    // UT allows one reservation per calendar day. Both dates here are UT's
-    // own MM/DD/YYYY form, so this is a plain string compare — no parsing,
-    // no timezone edge case (see parseUtDateString's writeup in dates.ts).
+    // UT allows one booking per day. Both dates are already MM/DD/YYYY, so
+    // compare strings and skip the timezone trap described in dates.ts.
     const existingThatDay = upcoming.find(r => r.date === toUtDateString(parsedDate));
 
     function confirmBooking(slot: CourtSlot) {
@@ -142,7 +137,7 @@ export default function CourtAvailabilityScreen() {
         );
     }
 
-    // Fires when UT rejected the booking and stayed on reserve_courts.php.
+    // Fires when UT rejected the booking.
     function handleBookingMessage(event: any) {
         let message = '';
         try {
@@ -236,9 +231,7 @@ export default function CourtAvailabilityScreen() {
                             source={{ uri: bookingSlot.bookUrl }}
                             onNavigationStateChange={handleBookingNavChange}
                             onLoadEnd={() => {
-                                // innerText needs real layout — this WebView is
-                                // clipped by its wrapper but keeps a non-zero
-                                // height and its natural width, so text reads.
+                                // Needs a non-zero size to read text — see below.
                                 bookingWebviewRef.current?.injectJavaScript(BOOKING_RESULT_JS);
                             }}
                             onMessage={handleBookingMessage}

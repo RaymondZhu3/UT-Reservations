@@ -8,11 +8,8 @@ import type { Reservation } from '@/constants/types';
 
 const MY_RESERVATIONS_URL = 'https://apps.rs.utexas.edu/app/myrecsports/myreservations.php';
 
-// Hitting this ends UT's own session, not just our local flags. Logging out
-// by only clearing SecureStore leaves the Shibboleth cookie alive in the
-// WebView's cookie store (HttpOnly, so unreachable from JS and from
-// SecureStore both) — the next person to tap Login lands straight in the
-// previous user's account. See context.md section 6.
+// Ends UT's session too. Clearing SecureStore alone leaves you logged into
+// UT, so the next person to tap Login lands in your account. context.md §6.
 const LOGOUT_URL = 'https://apps.rs.utexas.edu/logout';
 
 // Scrapes myreservations.php's reservation cards. Used to be duplicated
@@ -158,36 +155,21 @@ export function ReservationsProvider({ children }: { children: ReactNode }) {
         `);
     }
 
-    // Executes a cancel by navigating the same hidden WebView to UT's
-    // release URL — same trick court-availability.tsx uses for booking.
-    // Its redirect chain isn't reliable (see refresh() above), so we
-    // explicitly force back to myreservations.php a moment later.
+    // Executes a cancel by navigating the same hidden WebView to UT's release URL.
     function cancelReservation(cancelUrl: string) {
         debugLog('cancelReservation() — navigating shared WebView to', cancelUrl);
         webviewRef.current?.injectJavaScript(`
             window.location.href = '${cancelUrl}';
             true;
         `);
-        setTimeout(() => {
-            debugLog('cancelReservation() — forcing WebView back to myreservations.php');
-            refresh();
-        }, 1500);
     }
 
-    // Ends the UT session server-side before dropping local state. The
-    // WebView navigation has to happen through the shared WebView because
-    // that's where the session cookie lives — clearing SecureStore alone
-    // logs you out of this app but not out of UT.
-    //
-    // NOTE (untested): this is an SP-level logout. Whether it also ends the
-    // Shibboleth IdP session is unverified — if it doesn't, re-login will
-    // silently SSO straight back in with no Duo prompt. Test on device:
-    // log out, log back in, and see whether Duo challenges you.
+    // Signs out of UT first, then drops local state. Confirmed on device:
+    // logging back in asks for the EID again.
     async function logout() {
         debugLog('logout() — navigating shared WebView to', LOGOUT_URL);
 
-        // Block handleNavigationChange from firing its own redirect while
-        // UT tears the session down; we're already headed to /login.
+        // Stop the expiry handler from redirecting too — we're already going.
         redirectedRef.current = true;
         sessionRef.current = 'invalid';
         setSession('invalid');
@@ -201,18 +183,12 @@ export function ReservationsProvider({ children }: { children: ReactNode }) {
         await SecureStore.deleteItemAsync('has_logged_in');
         await SecureStore.deleteItemAsync('ut_cookies');
 
-        // Let UT's logout actually land before the login screen mounts its
-        // own WebView — same reasoning as cancelReservation()'s delay.
+        // Give UT's logout a moment to land before the login screen loads.
         setTimeout(() => router.replace('/login'), 1200);
     }
 
-    // Called by login.tsx after a successful login. This provider lives in
-    // the root layout and never unmounts, so without an explicit reset the
-    // 'invalid' session state and redirectedRef guard set during logout (or
-    // during a session expiry) survive straight through re-login: Home
-    // would return null forever and refresh() would skip every call, until
-    // the app was force-restarted. Same shape of bug as the .reload() saga
-    // — state surviving a transition that looks like it resets everything.
+    // This provider never unmounts, so the 'invalid' flags set on logout
+    // survive re-login and leave Home blank. login.tsx calls this. context.md §6.
     function resetSession() {
         debugLog('resetSession() — clearing session guards after login');
         redirectedRef.current = false;
@@ -222,8 +198,7 @@ export function ReservationsProvider({ children }: { children: ReactNode }) {
         setUpcoming([]);
         setLoading(true);
 
-        // The shared WebView is parked on the logout/SSO page at this
-        // point, so point it back at the page it's supposed to scrape.
+        // WebView is sitting on the login page — send it back.
         webviewRef.current?.injectJavaScript(`
             window.location.href = '${MY_RESERVATIONS_URL}';
             true;
