@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>UT Reserve — Support</title>
+<style>
+  :root{
+    --bg:#ffffff; --fg:#1a1a1c; --muted:#5f6066; --rule:#e4e4e8;
+    --accent:#bf5700; --card:#faf9f8;
+  }
+  @media (prefers-color-scheme: dark){
+    :root{ --bg:#131315; --fg:#ececed; --muted:#a0a1a8; --rule:#2c2c30;
+           --accent:#ff8a3d; --card:#1c1c1f; }
+  }
+  *{box-sizing:border-box}
+  body{
+    margin:0; background:var(--bg); color:var(--fg);
+    font:16px/1.65 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    -webkit-text-size-adjust:100%;
+  }
+  .wrap{max-width:44rem; margin:0 auto; padding:3rem 1.25rem 5rem}
+  .hero{display:flex; align-items:center; gap:1rem; margin-bottom:.75rem}
+  .mark{width:64px; height:64px; flex:0 0 64px; border-radius:14px; background:var(--accent);
+        display:grid; place-items:center}
+  .mark svg{width:64px; height:64px; display:block}
+  h1{font-size:1.9rem; margin:0; letter-spacing:-.025em; line-height:1.1}
+  .tag{color:var(--muted); margin:.15rem 0 0; font-size:.95rem}
+  .lede{font-size:1.05rem; margin:1.5rem 0 0}
+  h2{font-size:1.05rem; margin:2.5rem 0 .6rem; letter-spacing:-.01em}
+  p{margin:0 0 1rem}
+  ul{margin:0 0 1rem; padding-left:1.25rem}
+  li{margin:.35rem 0}
+  a{color:var(--accent)}
+  .faq{border-top:1px solid var(--rule); padding-top:1rem; margin-top:1rem}
+  .faq h3{font-size:.98rem; margin:0 0 .35rem}
+  .faq p{color:var(--muted); margin:0 0 1.4rem}
+  .contact{background:var(--card); border:1px solid var(--rule); border-left:3px solid var(--accent);
+           border-radius:6px; padding:1rem 1.15rem; margin:1rem 0}
+  .contact p{margin:0}
+  footer{margin-top:3.5rem; padding-top:1.5rem; border-top:1px solid var(--rule);
+         color:var(--muted); font-size:.875rem}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <div class="hero">
+    <div class="mark" aria-hidden="true">
+      <svg viewBox="0 0 100 100" role="img">
+        <circle cx="50" cy="50" r="36" fill="none" stroke="#fff" stroke-width="4.8"/>
+        <rect x="32.5" y="45" width="35" height="10" rx="5" fill="#fff"/>
+        <rect x="45" y="32.5" width="10" height="35" rx="5" fill="#fff"/>
+      </svg>
+    </div>
+    <div>
+      <h1>UT Reserve</h1>
+      <p class="tag">Support &amp; help</p>
+    </div>
+  </div>
+
+  <p class="lede">UT Reserve is a faster way to browse and book UT&nbsp;Austin RecSports courts
+  from your phone — squash, racquetball, pickleball and tennis across all eight facilities.</p>
+
+  <h2>What you need</h2>
+  <ul>
+    <li>A valid UT EID, and the ability to complete Duo two-factor sign-in</li>
+    <li>iOS 16 or later</li>
+  </ul>
+  <p>The app books through UT's own reservation system, so anything you book here appears in
+  your RecSports account exactly as if you had booked it on the website — and vice versa.</p>
+
+  <h2>Common questions</h2>
+
+  <div class="faq">
+    <h3>Why do I have to sign in through UT's own page?</h3>
+    <p>Because that is the only safe way to do it. The app never sees your EID or password —
+    you type them into UT's real login page, and the app has no server that could receive them.
+    See the <a href="privacy.html">privacy policy</a> for the detail.</p>
+
+    <h3>Why does the "open now" section sometimes show nothing?</h3>
+    <p>Availability shown on the home screen comes from other students' checks, not from a
+    constant background scan of UT's servers. If nobody has checked a facility recently, there
+    is nothing to show. Open the Courts tab and pick a facility to get live availability.</p>
+
+    <h3>It says I already have a reservation, but I don't.</h3>
+    <p>UT allows one reservation per day per person, and enforces it on their end. A court you
+    already played today can still count against that limit even though it no longer appears in
+    your upcoming reservations. The message shown is UT's own.</p>
+
+    <h3>How do I cancel?</h3>
+    <p>Tap Cancel on the reservation, either on the home screen or in My Reservations. This
+    cancels it with UT directly and also removes any reminder you scheduled for it.</p>
+
+    <h3>Are the facility hours always right?</h3>
+    <p>Hours are collected daily from UT RecSports' published hours page, and the app shows
+    which period they cover and when they were last updated. During breaks and holidays UT
+    sometimes changes hours without updating that page — treat the hours as a good guide, not
+    a guarantee.</p>
+
+    <h3>How do I sign out?</h3>
+    <p>My Reservations tab, top right. This ends your session with UT, not just inside the app,
+    so signing back in requires your EID and password again.</p>
+  </div>
+
+  <h2>Report a bug or ask for help</h2>
+  <div class="contact">
+    <p>Email <a href="mailto:raymondzhu954@gmail.com">raymondzhu954@gmail.com</a>. Including
+    your device model, iOS version, and what you were doing when it went wrong makes a fix
+    much faster.</p>
+  </div>
+
+  <h2>Privacy</h2>
+  <p>The app collects no personal data. Read the full <a href="privacy.html">privacy
+  policy</a>.</p>
+
+  <footer>
+    UT Reserve is an independent student project and is not affiliated with, endorsed by, or
+    operated by The University of Texas at Austin. RecSports facility data belongs to UT.
+  </footer>
+
+</div>
+</body>
+</html>

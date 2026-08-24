@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Privacy Policy — UT Reserve</title>
+<style>
+  :root{
+    --bg:#ffffff; --fg:#1a1a1c; --muted:#5f6066; --rule:#e4e4e8;
+    --accent:#bf5700; --card:#faf9f8;
+  }
+  @media (prefers-color-scheme: dark){
+    :root{ --bg:#131315; --fg:#ececed; --muted:#a0a1a8; --rule:#2c2c30;
+           --accent:#ff8a3d; --card:#1c1c1f; }
+  }
+  *{box-sizing:border-box}
+  body{
+    margin:0; background:var(--bg); color:var(--fg);
+    font:16px/1.65 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    -webkit-text-size-adjust:100%;
+  }
+  .wrap{max-width:44rem; margin:0 auto; padding:3rem 1.25rem 5rem}
+  header{border-bottom:1px solid var(--rule); padding-bottom:1.5rem; margin-bottom:2rem}
+  h1{font-size:1.75rem; line-height:1.25; margin:0 0 .4rem; letter-spacing:-.02em}
+  .updated{color:var(--muted); font-size:.9rem; margin:0}
+  h2{font-size:1.05rem; margin:2.5rem 0 .6rem; letter-spacing:-.01em}
+  h2 .num{color:var(--accent); font-variant-numeric:tabular-nums; margin-right:.5rem}
+  p{margin:0 0 1rem}
+  ul{margin:0 0 1rem; padding-left:1.25rem}
+  li{margin:.3rem 0}
+  a{color:var(--accent)}
+  .summary{
+    background:var(--card); border:1px solid var(--rule); border-left:3px solid var(--accent);
+    border-radius:6px; padding:1rem 1.15rem; margin:0 0 1rem;
+  }
+  .summary p:last-child{margin-bottom:0}
+  .note{color:var(--muted); font-size:.9rem}
+  footer{margin-top:3.5rem; padding-top:1.5rem; border-top:1px solid var(--rule);
+         color:var(--muted); font-size:.875rem}
+  code{background:var(--card); border:1px solid var(--rule); border-radius:3px;
+       padding:.05em .35em; font-size:.9em}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header>
+  <h1>Privacy Policy — UT Reserve</h1>
+  <p class="updated">Last updated: 21 August 2026</p>
+</header>
+
+<div class="summary">
+  <p><strong>The short version.</strong> UT Reserve does not collect, store, or share your
+  personal information. Your UT EID and password are typed into UT&nbsp;Austin's own login page
+  and are never seen by this app. Nothing that identifies you ever leaves your device.</p>
+</div>
+
+<p>UT Reserve is an independent app built by a student for browsing and booking
+UT&nbsp;Austin RecSports courts. It is <strong>not affiliated with, endorsed by, or operated
+by The University of Texas at Austin</strong>. This policy explains exactly what the app does
+and does not do with data.</p>
+
+<h2><span class="num">1.</span>Your UT credentials</h2>
+<p>The app signs you in by loading UT's own login page — Shibboleth single sign-on, followed by
+Duo two-factor — inside an embedded browser view. You type your UT EID and password into
+<em>UT's page</em>, and they are transmitted directly to UT. The app does not read, log, store,
+or transmit your credentials. There is no server behind this app that could receive them.</p>
+<p>Your signed-in session is held as an <code>HttpOnly</code> cookie in your device's system
+browser storage. <code>HttpOnly</code> means the app's own code is technically prevented from
+reading it. Signing out navigates to UT's logout endpoint, which ends the session with UT
+itself rather than merely forgetting it locally.</p>
+
+<h2><span class="num">2.</span>What is stored on your device</h2>
+<ul>
+  <li>A single flag recording that you have signed in before, so the app can skip the login
+      screen. Stored in the iOS Keychain.</li>
+  <li>Your reservations, held in memory only while the app is open and re-read from UT's
+      website each time. They are never written to disk and never sent anywhere.</li>
+  <li>Any reminders you schedule. These are local notifications generated and delivered
+      entirely by your own device. There is no push server and no push token.</li>
+</ul>
+
+<h2><span class="num">3.</span>What is sent off your device</h2>
+<p>Exactly one kind of data: <strong>court availability</strong>.</p>
+<p>When you check a facility, the app reads that facility's availability grid from UT's
+reservation site using your signed-in session, and saves the result to a shared database
+(hosted by Supabase) so that other users of the app can see which courts are open. Each
+record contains only:</p>
+<ul>
+  <li>the facility's ID and name</li>
+  <li>the date that was checked</li>
+  <li>the list of open court and time slots</li>
+  <li>a timestamp</li>
+</ul>
+<p>No user identifier, account, device ID, or reservation of yours is included. These records
+describe <em>courts</em>, not people. There is no way to determine from the database who
+checked a facility, or who holds a booking.</p>
+<p>The app also reads facility opening hours from that same database. Those hours are collected
+from UT RecSports' publicly available hours page by an automated job. No user data is involved.</p>
+
+<h2><span class="num">4.</span>What the app does not do</h2>
+<ul>
+  <li>No analytics or usage tracking of any kind</li>
+  <li>No advertising and no ad networks</li>
+  <li>No crash-reporting or performance-monitoring SDKs</li>
+  <li>No selling or sharing of data with anyone</li>
+  <li>No accounts, profiles, or sign-up — the app has no user database</li>
+  <li>No access to location, contacts, photos, camera, microphone, or health data</li>
+</ul>
+
+<h2><span class="num">5.</span>Third-party services</h2>
+<ul>
+  <li><strong>Supabase</strong> hosts the shared court-availability database. As with any web
+      service, Supabase's infrastructure may record standard operational request logs, which
+      can include IP addresses, for security and reliability purposes. Those logs are not used
+      by this app to identify, profile, or track anyone.</li>
+  <li><strong>The University of Texas at Austin</strong> operates the reservation website the
+      app loads. Your use of that site is governed by UT's own policies, not this one.</li>
+</ul>
+
+<h2><span class="num">6.</span>Children</h2>
+<p>This app is not directed at children under 13 and does not knowingly collect information
+from them. Using it requires a UT EID.</p>
+
+<h2><span class="num">7.</span>Changes to this policy</h2>
+<p>If this policy changes materially, the updated version will be posted on this page with a
+new date at the top.</p>
+
+<h2><span class="num">8.</span>Contact</h2>
+<p>Questions about this policy or about the app:
+<a href="mailto:raymondzhu954@gmail.com">raymondzhu954@gmail.com</a></p>
+
+<footer>
+  UT Reserve is an independent student project and is not affiliated with, endorsed by, or
+  operated by The University of Texas at Austin. &middot; <a href="./">Support</a>
+</footer>
+
+</div>
+</body>
+</html>
