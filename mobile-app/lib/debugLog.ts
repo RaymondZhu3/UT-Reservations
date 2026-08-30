@@ -1,12 +1,9 @@
-// Lightweight timestamped debug logger. Built specifically for tracing the
-// booking/cancel refresh bug — Metro doesn't timestamp console.log by
-// default, which makes it hard to reconstruct the exact order and timing
-// of events (a user tapping "Book", a WebView's navigation events, a
-// scrape result arriving) when they're logged from several different
-// files. Every call is prefixed with elapsed seconds since app launch so
-// lines from different files can be lined up chronologically afterward.
+// Timestamped debug logger. Metro does not timestamp console.log, which makes
+// it hard to reconstruct the order of events logged from different files — a
+// tap, a WebView navigation, a scrape result arriving. Every line carries
+// elapsed seconds since launch so they can be lined up chronologically.
 //
-// Gated by __DEV__ so none of this ships to a production/TestFlight build.
+// __DEV__-gated, so nothing here reaches a TestFlight or production build.
 const bootTime = Date.now();
 
 export function debugLog(tag: string, ...args: unknown[]) {

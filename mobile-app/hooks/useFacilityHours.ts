@@ -13,14 +13,24 @@ export function useFacilityHours() {
         periodLabel: null,
         scrapedAt: null,
     });
+    const [error, setError] = useState<string | null>(null);
     const [loading, setLoading] = useState(true);
 
     const refresh = useCallback(async () => {
         setLoading(true);
-        const rows = await fetchFacilityHours();
+        const result = await fetchFacilityHours();
+
+        if (result.error) {
+            // Same rule as useFacilityOverview: no hours beats wrong hours.
+            setByFacilityId({});
+            setMeta({ periodLabel: null, scrapedAt: null });
+            setError(result.error);
+            setLoading(false);
+            return;
+        }
 
         const byName: Record<string, FacilityHours> = {};
-        rows.forEach(row => { byName[row.facility_name] = row; });
+        result.rows.forEach(row => { byName[row.facility_name] = row; });
 
         const mapped: Record<number, FacilityHours> = {};
         Object.entries(HOURS_FACILITY_NAMES).forEach(([facilityId, hoursName]) => {
@@ -30,13 +40,14 @@ export function useFacilityHours() {
 
         setByFacilityId(mapped);
         setMeta({
-            periodLabel: rows[0]?.period_label ?? null,
-            scrapedAt: rows[0]?.scraped_at ?? null,
+            periodLabel: result.rows[0]?.period_label ?? null,
+            scrapedAt: result.rows[0]?.scraped_at ?? null,
         });
+        setError(null);
         setLoading(false);
     }, []);
 
     useEffect(() => { refresh(); }, [refresh]);
 
-    return { byFacilityId, meta, loading, refresh };
+    return { byFacilityId, meta, error, loading, refresh };
 }

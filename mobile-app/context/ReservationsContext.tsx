@@ -8,15 +8,12 @@ import type { Reservation } from '@/constants/types';
 
 const MY_RESERVATIONS_URL = 'https://apps.rs.utexas.edu/app/myrecsports/myreservations.php';
 
-// Ends UT's session too. Clearing SecureStore alone leaves you logged into
-// UT, so the next person to tap Login lands in your account. context.md §6.
+// Ends UT's session. Clearing SecureStore alone leaves the Shibboleth cookie
+// live in the WebView, so the next person to tap Login lands in this account.
 const LOGOUT_URL = 'https://apps.rs.utexas.edu/logout';
 
-// Scrapes myreservations.php's reservation cards. Used to be duplicated
-// almost verbatim in both index.tsx and myreservations.tsx, each running
-// its own separate hidden/visible WebView against the same URL. Now there's
-// one WebView (below, mounted once here) and one copy of this script —
-// every screen that needs reservation data just reads it from context.
+// Scrapes the reservation cards on myreservations.php. One WebView and one
+// copy of this script live here; every screen reads the result from context.
 const SCRAPE_JS = `
     (function() {
         try {
@@ -45,6 +42,10 @@ const SCRAPE_JS = `
             });
             window.ReactNativeWebView.postMessage(JSON.stringify({
                 type: 'reservations',
+                // Which page this ran on. onLoadEnd scrapes whatever page the
+                // WebView landed on, and index.php has no reservation cards --
+                // so a scrape there honestly reports zero of the wrong page.
+                url: window.location.href,
                 upcoming: upcoming
             }));
         } catch (e) {
@@ -68,7 +69,8 @@ type ReservationsContextType = {
     loading: boolean;
     refreshing: boolean;
     session: SessionState;
-    refresh: () => void;
+    /** `visible: true` = user pulled to refresh. Focus refetches stay silent. */
+    refresh: (options?: { visible?: boolean }) => void;
     cancelReservation: (cancelUrl: string) => void;
     logout: () => Promise<void>;
     resetSession: () => void;
@@ -102,12 +104,8 @@ export function ReservationsProvider({ children }: { children: ReactNode }) {
     const [loading, setLoading] = useState(true);
     const [refreshing, setRefreshing] = useState(false);
     const [session, setSession] = useState<SessionState>('unknown');
-    // Guards against overlapping reload() calls — real risk now that
-    // My Reservations fires several retries in quick succession (2s, 4s,
-    // 7s) to ride out UT's post-booking propagation delay. A ref (not the
-    // refreshing state) because it needs to be read/written synchronously
-    // at call time regardless of which render's closure of refresh()
-    // happens to be invoked.
+    // Stops two refresh() calls overlapping. A ref, not state, because it has
+    // to be read and written synchronously at call time.
     const isRefreshingRef = useRef(false);
 
     // Moved from index.tsx: skip straight to login if we've never logged
@@ -116,7 +114,10 @@ export function ReservationsProvider({ children }: { children: ReactNode }) {
         async function checkAuth() {
             const hasLoggedIn = await SecureStore.getItemAsync('has_logged_in');
             if (!hasLoggedIn) {
-                router.replace('/login');
+                // Never-logged-in users, and App Review, land on the native
+                // welcome screen rather than straight into UT's SSO page.
+                // See app/welcome.tsx.
+                router.replace('/welcome');
             }
         }
         checkAuth();
@@ -133,11 +134,10 @@ export function ReservationsProvider({ children }: { children: ReactNode }) {
     }, []);
 
     // Navigates explicitly to MY_RESERVATIONS_URL rather than calling
-    // .reload() — .reload() reloads whatever page the WebView is currently
-    // on, and UT's cancel redirect chain can strand it on index.php (zero
-    // reservation cards, so it silently "confirms" zero upcoming forever).
-    // Full root-cause writeup: context.md section 6.
-    function refresh() {
+    // .reload(), which reloads whatever page the WebView currently sits on.
+    // UT's cancel redirect chain can strand it on index.php, which has no
+    // reservation cards and so scrapes as a confident, permanent zero.
+    function refresh(options?: { visible?: boolean }) {
         if (session === 'invalid') {
             debugLog('refresh() skipped — session invalid');
             return;
@@ -148,7 +148,10 @@ export function ReservationsProvider({ children }: { children: ReactNode }) {
         }
         debugLog('refresh() — navigating shared WebView back to', MY_RESERVATIONS_URL);
         isRefreshingRef.current = true;
-        setRefreshing(true);
+        // Only a pull shows a spinner. Driving this from a focus refetch makes
+        // iOS add the RefreshControl's ~60pt inset to an already laid-out
+        // screen.
+        if (options?.visible) setRefreshing(true);
         webviewRef.current?.injectJavaScript(`
             window.location.href = '${MY_RESERVATIONS_URL}';
             true;
@@ -162,10 +165,17 @@ export function ReservationsProvider({ children }: { children: ReactNode }) {
             window.location.href = '${cancelUrl}';
             true;
         `);
+
+        // UT's release chain (release -> index.php -> myreservations.php)
+        // doesn't always finish the last hop, which leaves the cancelled
+        // reservation still on screen. refresh() navigates explicitly to
+        // myreservations.php, so it self-corrects wherever the chain stopped.
+        setTimeout(() => refresh(), 1500);
     }
 
-    // Signs out of UT first, then drops local state. Confirmed on device:
-    // logging back in asks for the EID again.
+    // Ends the UT session before dropping local state. Clearing SecureStore
+    // alone leaves the Shibboleth cookie live in the WebView, so the next
+    // person to tap Login lands in the previous user's account.
     async function logout() {
         debugLog('logout() — navigating shared WebView to', LOGOUT_URL);
 
@@ -184,11 +194,11 @@ export function ReservationsProvider({ children }: { children: ReactNode }) {
         await SecureStore.deleteItemAsync('ut_cookies');
 
         // Give UT's logout a moment to land before the login screen loads.
-        setTimeout(() => router.replace('/login'), 1200);
+        setTimeout(() => router.replace('/welcome'), 1200);
     }
 
-    // This provider never unmounts, so the 'invalid' flags set on logout
-    // survive re-login and leave Home blank. login.tsx calls this. context.md §6.
+    // This provider never unmounts, so the 'invalid' flags set during logout
+    // survive re-login and would leave Home blank. login.tsx calls this.
     function resetSession() {
         debugLog('resetSession() — clearing session guards after login');
         redirectedRef.current = false;
@@ -214,6 +224,16 @@ export function ReservationsProvider({ children }: { children: ReactNode }) {
         try {
             const parsed = JSON.parse(event.nativeEvent.data);
             if (parsed.type === 'reservations') {
+                const fromUrl: string = parsed.url || '';
+                if (!fromUrl.includes('myreservations.php')) {
+                    debugLog('Reservations scrape IGNORED — ran on', fromUrl || '(unknown page)');
+                    // An empty result from the wrong page is not evidence the
+                    // user has no reservations, so leave `upcoming` alone. Do
+                    // clear the guard, or refresh() stays blocked forever.
+                    setRefreshing(false);
+                    isRefreshingRef.current = false;
+                    return;
+                }
                 // Logs id (parsed out of cancelUrl) alongside facility/date/
                 // time, not just the latter — a rebooked identical slot
                 // looks textually identical to the original otherwise, and

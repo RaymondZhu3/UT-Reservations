@@ -85,14 +85,11 @@ export type AvailabilityScraperHandle = {
     reload: () => void;
 };
 
-// One invisible WebView pointed at a single facility's availability page
-// for a specific date. Mirrors the hidden-WebView pattern already used on
-// the home screen for myreservations.php — this does the same thing for
-// reserve_courts.php.
+// One invisible WebView pointed at a single facility's availability page for a
+// given date. Same hidden-WebView pattern as ReservationsContext, aimed at
+// reserve_courts.php instead of myreservations.php.
 //
-// CONFIRMED on-device: facility_id=<id>&date=MM/DD/YYYY correctly loads
-// the requested facility and day — the real page's Location dropdown and
-// Date field both matched what was requested.
+// facility_id=<id>&date=MM/DD/YYYY are the parameters the page expects.
 function buildUrl(facilityId: number, date: Date): string {
     const dateParam = toUtDateString(date);
     return `${RESERVE_URL}?facility_id=${facilityId}&date=${encodeURIComponent(dateParam)}`;
@@ -123,11 +120,11 @@ const AvailabilityScraper = forwardRef<AvailabilityScraperHandle, Props>(
             }
         }
 
-        // Only constrain height, not width — innerText (used in
-        // buildScrapeJs above) reflects rendered layout, and a ~0px-wide
-        // WebView collapses the table's text layout even though DOM-only
-        // checks (querySelector/classList) still work. See context.md
-        // section 6.
+        // Constrain height only, never width. innerText (used in
+        // buildScrapeJs above) reflects rendered layout, so a ~0px-wide WebView
+        // collapses the table's text to empty strings even though DOM-only
+        // checks like querySelector and classList still match. A WebView must
+        // never render at zero size in either axis.
         return (
             <View style={debugVisible ? { height: 500, width: '100%' } : { height: 0, overflow: 'hidden' }}>
                 <WebView

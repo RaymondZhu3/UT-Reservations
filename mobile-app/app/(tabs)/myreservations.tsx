@@ -1,21 +1,32 @@
 import { View, Text, StyleSheet, TouchableOpacity, ScrollView, RefreshControl, ActivityIndicator } from 'react-native';
 import { useRouter, useFocusEffect } from 'expo-router';
-import { useCallback } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { useReservations } from '@/context/ReservationsContext';
 import { sortReservationsByDate } from '@/lib/reservations';
 import { debugLog } from '@/lib/debugLog';
 import ReservationCard from '@/components/ReservationCard';
 import LogoutButton from '@/components/LogoutButton';
+import { ScreenHeader } from '@/components/ui/ScreenHeader';
+import { Brand, Radius, Space, Type } from '@/constants/theme';
 
-// The full reservation manager — every upcoming booking, sorted soonest
-// first, each with its own Remind/Cancel. Home only ever shows the single
-// next one; this is where you come to check or manage everything you've
-// got booked. Reads the same ReservationsContext the home screen does, so
-// there's no separate scrape happening here — same WebView, same data.
+// The full reservation manager: every upcoming booking, soonest first, each
+// with its own Remind/Cancel. Home shows only the next one. Reads the same
+// ReservationsContext, so there is no second scrape — one WebView, one source.
 export default function MyReservationsTab() {
     const { upcoming, loading, refreshing, refresh } = useReservations();
     const router = useRouter();
     const sorted = sortReservationsByDate(upcoming);
+
+    // `refreshing` is shared context state, so it is true whenever ANY screen
+    // triggered a visible refresh. This flag records whether the pull happened
+    // here. Without it, pulling on Home and switching tabs mounts this screen's
+    // RefreshControl already spinning, and a control born in the refreshing
+    // state does not animate away — it sticks until a scroll or a remount.
+    const [pulled, setPulled] = useState(false);
+    useEffect(() => {
+        if (!pulled || refreshing) return;
+        setPulled(false);
+    }, [pulled, refreshing]);
 
     // Refresh on every focus
     useFocusEffect(
@@ -26,31 +37,29 @@ export default function MyReservationsTab() {
 
     return (
         <View style={styles.container}>
-            <View style={styles.header}>
-                <View style={styles.headerRow}>
-                    <View style={styles.headerText}>
-                        <Text style={styles.title}>My Reservations</Text>
-                        <Text style={styles.subtitle}>
-                            {loading ? 'Checking...' : sorted.length > 0 ? `${sorted.length} upcoming` : 'Nothing booked'}
-                        </Text>
-                    </View>
-                    <LogoutButton />
-                </View>
-            </View>
+            <ScreenHeader
+                title="My Reservations"
+                subtitle={loading ? 'Checking...' : sorted.length > 0 ? `${sorted.length} upcoming` : 'Nothing booked'}
+                right={<LogoutButton />}
+            />
 
             <ScrollView
                 contentContainerStyle={styles.scrollContent}
                 refreshControl={
                     <RefreshControl
-                        refreshing={refreshing}
-                        onRefresh={() => { debugLog('My Reservations — manual pull-to-refresh'); refresh(); }}
-                        tintColor="#BF5700"
+                        refreshing={pulled && refreshing}
+                        onRefresh={() => {
+                            debugLog('My Reservations — manual pull-to-refresh');
+                            setPulled(true);
+                            refresh({ visible: true });
+                        }}
+                        tintColor={Brand.orange}
                     />
                 }
             >
                 {loading ? (
                     <View style={styles.centered}>
-                        <ActivityIndicator color="#BF5700" />
+                        <ActivityIndicator color={Brand.orange} />
                         <Text style={styles.mutedText}>Loading reservations…</Text>
                     </View>
                 ) : sorted.length === 0 ? (
@@ -77,21 +86,13 @@ export default function MyReservationsTab() {
 }
 
 const styles = StyleSheet.create({
-    container: { flex: 1, backgroundColor: '#f5f5f5' },
-    header: {
-        paddingTop: 56, paddingHorizontal: 16, paddingBottom: 14,
-        backgroundColor: 'white', borderBottomWidth: 1, borderBottomColor: '#eee',
-    },
-    headerRow: { flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between' },
-    headerText: { flex: 1 },
-    title: { fontSize: 20, fontWeight: '700', color: '#BF5700' },
-    subtitle: { fontSize: 13, color: '#888', marginTop: 2 },
-    scrollContent: { padding: 16, paddingBottom: 40, flexGrow: 1 },
-    centered: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: 12, paddingTop: 60 },
-    mutedText: { fontSize: 14, color: '#aaa' },
+    container: { flex: 1, backgroundColor: Brand.bg },
+    scrollContent: { padding: Space.lg, paddingBottom: Space.xxl, flexGrow: 1 },
+    centered: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: Space.md, paddingTop: 60 },
+    mutedText: { ...Type.bodySm, fontWeight: '400', color: Brand.inkFaint },
     btnOrange: {
-        backgroundColor: '#BF5700', borderRadius: 8,
-        paddingVertical: 10, paddingHorizontal: 16,
+        backgroundColor: Brand.orange, borderRadius: Radius.sm,
+        paddingVertical: Space.sm + 2, paddingHorizontal: Space.lg,
     },
-    btnOrangeText: { color: 'white', fontSize: 14, fontWeight: '600' },
+    btnOrangeText: { ...Type.bodySm, fontWeight: '600', color: Brand.onOrange },
 });

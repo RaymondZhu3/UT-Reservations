@@ -5,20 +5,25 @@ import { SymbolWeight, SymbolViewProps } from 'expo-symbols';
 import { ComponentProps } from 'react';
 import { OpaqueColorValue, type StyleProp, type TextStyle } from 'react-native';
 
-type IconMapping = Record<SymbolViewProps['name'], ComponentProps<typeof MaterialIcons>['name']>;
-type IconSymbolName = keyof typeof MAPPING;
+type MaterialIconName = ComponentProps<typeof MaterialIcons>['name'];
 
 /**
- * Add your SF Symbols to Material Icons mappings here.
- * - see Material Icons in the [Icons Directory](https://icons.expo.fyi).
- * - see SF Symbols in the [SF Symbols](https://developer.apple.com/sf-symbols/) app.
+ * SF Symbol -> Material Icons, for Android and web. Add a name here when you
+ * start using it: `IconSymbolName` is derived from this object, so an unmapped
+ * name is a compile error rather than a blank space on Android.
+ *
+ * `satisfies Partial<Record<...>>`, not `as` — `as` widens the key type to
+ * every SF Symbol and defeats that check.
+ *
+ * Material Icons: https://icons.expo.fyi
  */
 const MAPPING = {
-  'house.fill': 'home',
-  'paperplane.fill': 'send',
-  'chevron.left.forwardslash.chevron.right': 'code',
-  'chevron.right': 'chevron-right',
-} as IconMapping;
+  house: 'home',
+  sportscourt: 'sports-tennis',
+  calendar: 'event',
+} as const satisfies Partial<Record<SymbolViewProps['name'], MaterialIconName>>;
+
+export type IconSymbolName = keyof typeof MAPPING;
 
 /**
  * An icon component that uses native SF Symbols on iOS, and Material Icons on Android and web.

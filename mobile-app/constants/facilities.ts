@@ -1,6 +1,6 @@
 // Facility name -> fid used in reserve_courts.php?facility_id=XX
-// Pulled from context.md / backend/scraper.py — verify against the live
-// site if UT ever re-numbers facilities.
+// Mirrors backend/scraper.py. Verify against the live site if UT ever
+// re-numbers facilities.
 export const FACILITIES: Record<string, number> = {
     'Bellmont Hall - Squash': 28,
     'Caven-Clark - Pickleball': 30,

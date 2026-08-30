@@ -8,6 +8,8 @@ import { dateLabel, toUtDateString } from '@/lib/dates';
 import { reservationDateLabel } from '@/lib/reservations';
 import { debugLog } from '@/lib/debugLog';
 import type { CourtSlot } from '@/constants/types';
+import { ScreenHeader } from '@/components/ui/ScreenHeader';
+import { Brand, Radius, Space, Type } from '@/constants/theme';
 
 // When UT rejects a booking it stays on the same page and shows an error
 // banner instead of redirecting, so no navigation fires and we'd spin until
@@ -45,14 +47,11 @@ export default function CourtAvailabilityScreen() {
     const parsedDate = useMemo(() => new Date(date), [date]);
     const facilityIds = useMemo(() => [parsedFacilityId], [parsedFacilityId]);
 
-    // Flip to false once the scraper's selectors are confirmed working —
-    // this makes the normally-hidden WebView visible so you can see and
-    // screenshot exactly what reserve_courts.php loads with the current
-    // facility_id/date params.
+    // Set true to make the scraper's hidden WebView visible, to inspect what
+    // reserve_courts.php actually returns for the current facility_id and date.
     const DEBUG_VISIBLE_SCRAPER = false;
 
-    // Reservations the user already holds — used to catch UT's one-per-day
-    // limit before firing a booking that's guaranteed to be rejected.
+    // Catches UT's one-per-day limit before firing a booking UT would reject.
     const { upcoming } = useReservations();
 
     const { availability, scrapers } = useCourtAvailability({
@@ -178,21 +177,18 @@ export default function CourtAvailabilityScreen() {
 
     return (
         <View style={styles.container}>
-            <View style={styles.header}>
-                <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
-                    <Text style={styles.backText}>‹ Back</Text>
-                </TouchableOpacity>
-                <View>
-                    <Text style={styles.title}>{facilityName}</Text>
-                    <Text style={styles.subtitle}>{dateLabel(parsedDate)}</Text>
-                </View>
-            </View>
+            <ScreenHeader
+                title={facilityName}
+                subtitle={dateLabel(parsedDate)}
+                onBack={() => router.back()}
+                size="heading"
+            />
 
             {scrapers}
 
             {result?.loading ? (
                 <View style={styles.centered}>
-                    <ActivityIndicator color="#BF5700" />
+                    <ActivityIndicator color={Brand.orange} />
                     <Text style={styles.mutedText}>Checking availability…</Text>
                 </View>
             ) : result?.error ? (
@@ -247,30 +243,22 @@ export default function CourtAvailabilityScreen() {
 }
 
 const styles = StyleSheet.create({
-    container: { flex: 1, backgroundColor: '#f5f5f5' },
-    header: {
-        paddingTop: 56, paddingHorizontal: 16, paddingBottom: 14,
-        backgroundColor: 'white', borderBottomWidth: 1, borderBottomColor: '#eee',
-    },
-    backButton: { marginBottom: 8 },
-    backText: { fontSize: 15, color: '#BF5700' },
-    title: { fontSize: 18, fontWeight: '600', color: '#1a1a1a' },
-    subtitle: { fontSize: 13, color: '#888', marginTop: 2 },
-    centered: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: 8 },
-    mutedText: { fontSize: 13, color: '#aaa' },
+    container: { flex: 1, backgroundColor: Brand.bg },
+    centered: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: Space.sm },
+    mutedText: { ...Type.bodySm, fontWeight: '400', color: Brand.inkFaint },
     grid: {
-        padding: 16, flexDirection: 'row', flexWrap: 'wrap', gap: 10,
+        padding: Space.lg, flexDirection: 'row', flexWrap: 'wrap', gap: Space.sm + 2,
     },
     slot: {
-        width: '47%', backgroundColor: 'white', borderRadius: 12,
-        borderWidth: 0.5, borderColor: '#e5e5e5', padding: 12,
-        borderLeftWidth: 3, borderLeftColor: '#639922',
+        width: '47%', backgroundColor: Brand.surface, borderRadius: Radius.md,
+        borderWidth: StyleSheet.hairlineWidth, borderColor: Brand.border, padding: Space.md,
+        borderLeftWidth: 3, borderLeftColor: Brand.openEdge,
     },
-    slotCourt: { fontSize: 13, fontWeight: '600', color: '#1a1a1a' },
-    slotTime: { fontSize: 12, color: '#666', marginTop: 2 },
+    slotCourt: { ...Type.bodySm, fontWeight: '600', color: Brand.ink },
+    slotTime: { ...Type.caption, color: Brand.inkSoft, marginTop: 2 },
     bookingOverlay: {
         position: 'absolute', top: 0, left: 0, right: 0, bottom: 0,
-        backgroundColor: 'rgba(0,0,0,0.6)', alignItems: 'center', justifyContent: 'center', gap: 10,
+        backgroundColor: 'rgba(0,0,0,0.6)', alignItems: 'center', justifyContent: 'center', gap: Space.sm + 2,
     },
-    bookingText: { color: 'white', fontSize: 14, fontWeight: '500' },
+    bookingText: { ...Type.bodySm, fontSize: 14, color: Brand.surface },
 });

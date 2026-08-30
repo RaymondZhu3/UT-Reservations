@@ -6,10 +6,9 @@ import { toIsoDateString } from '@/lib/dates';
 import type { CourtSlot, FacilityAvailability } from '@/constants/types';
 
 type Options = {
-    // Which facilities to scrape. Defaults to all of them (the original
-    // "browse everything" use case). Pass a single id when the user has
-    // already picked a specific facility — no reason to fire 8 hidden
-    // WebViews to answer a question about one of them.
+    // Which facilities to scrape. Defaults to all of them. Pass a single id
+    // once the user has picked a facility — there is no reason to fire 8
+    // hidden WebViews to answer a question about one.
     facilityIds?: number[];
     // Defaults to today. Passed straight to AvailabilityScraper, which
     // builds it into the page URL.
@@ -18,10 +17,9 @@ type Options = {
     debugVisible?: boolean;
 };
 
-// Runs one hidden WebView per requested facility and aggregates their
-// scrape results. Drop `scrapers` somewhere in your tree (it renders
-// zero-size views, same trick as the home screen's hidden WebView) and
-// read `availability`.
+// Runs one hidden WebView per requested facility and aggregates the results.
+// Render `scrapers` somewhere in the tree (it renders clipped, zero-height
+// views) and read `availability`.
 //
 // Usage in a screen:
 //   const { availability, loading, refresh, scrapers } = useCourtAvailability({ facilityIds: [40], date });

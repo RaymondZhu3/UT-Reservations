@@ -1,5 +1,7 @@
-import { TouchableOpacity, Text, Alert, StyleSheet } from 'react-native';
+import { Alert, StyleSheet, Text, TouchableOpacity } from 'react-native';
+
 import { useReservations } from '@/context/ReservationsContext';
+import { Brand, Space, Type } from '@/constants/theme';
 
 // The real sign-out lives in ReservationsContext, since ending the UT session
 // means navigating the shared WebView — that's where the session cookie is.
@@ -25,6 +27,8 @@ export default function LogoutButton() {
 }
 
 const styles = StyleSheet.create({
-    button: { paddingVertical: 4, paddingHorizontal: 4 },
-    text: { fontSize: 15, color: '#cc0000', fontWeight: '500' },
+    button: { paddingVertical: Space.xs, paddingHorizontal: Space.xs },
+    // Was #cc0000, a third red alongside #A32D2D and #b00. Destructive
+    // actions share one token now.
+    text: { ...Type.bodySm, fontSize: 15, color: Brand.danger },
 });

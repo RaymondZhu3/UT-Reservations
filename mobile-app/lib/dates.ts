@@ -24,10 +24,9 @@ export function parseUtDateString(raw: string): Date {
     return new Date(Number(yyyy), Number(mm) - 1, Number(dd));
 }
 
-// Parses UT's "2:00 PM" time strings into 24-hour hours/minutes. Shared by
-// anything that needs to combine a reservation's date + time into one
-// timestamp — reminder scheduling (useNotifications.ts) and chronological
-// sorting (lib/reservations.ts) both used to parse this out themselves.
+// Parses UT's "2:00 PM" strings into 24-hour hours/minutes. Shared by anything
+// combining a reservation's date and time into one timestamp: reminder
+// scheduling (useNotifications.ts) and sorting (lib/reservations.ts).
 export function parseUtTime(time: string): { hours: number; minutes: number } {
     const [timePart, meridiem] = time.split(' ');
     const [hoursStr, minutesStr] = timePart.split(':');
@@ -58,7 +57,7 @@ export function dateLabel(date: Date): string {
 }
 
 // Next `count` days starting today, for a horizontal date picker.
-export function upcomingDates(count: number = 7): Date[] {
+export function upcomingDates(count: number = 8): Date[] {
     const dates: Date[] = [];
     for (let i = 0; i < count; i++) {
         const d = new Date();

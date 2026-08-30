@@ -1,16 +1,16 @@
 import { View, Text, StyleSheet, TouchableOpacity, Alert, ActionSheetIOS } from 'react-native';
+
+import { Card, CardRow } from '@/components/ui/Card';
+import { Brand, Radius, Space, Type } from '@/constants/theme';
 import { useReservations } from '@/context/ReservationsContext';
 import { scheduleReservationReminder, cancelReminder } from '@/hooks/useNotifications';
 import { formatFacility, reservationDateLabel } from '@/lib/reservations';
 import { debugLog } from '@/lib/debugLog';
 import type { Reservation } from '@/constants/types';
 
-// Shared by the home screen (single "next reservation" card) and the My
-// Reservations screen (full list) — used to be two separate copies of this
-// JSX + reminder/cancel logic, one per screen. Reads everything it needs
-// from ReservationsContext itself rather than taking a pile of callback
-// props, since both call sites would otherwise just be forwarding the same
-// context values straight through.
+// Shared by Home (the single next reservation) and My Reservations (the full
+// list). Reads what it needs from ReservationsContext rather than taking
+// callback props, since both call sites would only forward the same values.
 type Props = {
     reservation: Reservation;
 };
@@ -93,8 +93,8 @@ export default function ReservationCard({ reservation }: Props) {
     }
 
     return (
-        <View style={styles.card}>
-            <View style={styles.cardRow}>
+        <Card>
+            <CardRow>
                 <View style={{ flex: 1 }}>
                     <Text style={styles.cardTitle}>{formatFacility(reservation.facility)}</Text>
                     <Text style={styles.cardSub}>{dateText} · {reservation.time}</Text>
@@ -104,7 +104,7 @@ export default function ReservationCard({ reservation }: Props) {
                         {dateText}
                     </Text>
                 </View>
-            </View>
+            </CardRow>
             <View style={styles.buttonRow}>
                 <TouchableOpacity style={styles.btnGhost} onPress={handleRemind}>
                     <Text style={styles.btnGhostText}>Remind me</Text>
@@ -113,38 +113,28 @@ export default function ReservationCard({ reservation }: Props) {
                     <Text style={styles.btnRedText}>Cancel</Text>
                 </TouchableOpacity>
             </View>
-        </View>
+        </Card>
     );
 }
 
 const styles = StyleSheet.create({
-    card: {
-        backgroundColor: 'white', borderRadius: 12, padding: 16,
-        borderWidth: 0.5, borderColor: '#e5e5e5',
-        shadowColor: '#000', shadowOpacity: 0.04,
-        shadowRadius: 4, elevation: 1, marginBottom: 8,
-    },
-    cardRow: {
-        flexDirection: 'row', justifyContent: 'space-between',
-        alignItems: 'center', gap: 8,
-    },
-    cardTitle: { fontSize: 15, fontWeight: '600', color: '#1a1a1a' },
-    cardSub: { fontSize: 12, color: '#888', marginTop: 3 },
-    badge: { borderRadius: 20, paddingHorizontal: 10, paddingVertical: 3 },
-    badgeGreen: { backgroundColor: '#EAF3DE' },
-    badgeRed: { backgroundColor: '#FAEEDA' },
-    badgeText: { fontSize: 11, fontWeight: '600' },
-    badgeTextGreen: { color: '#3B6D11' },
-    badgeTextRed: { color: '#854F0B' },
-    buttonRow: { flexDirection: 'row', gap: 8, marginTop: 12 },
+    cardTitle: { ...Type.body, color: Brand.ink },
+    cardSub: { ...Type.caption, color: Brand.inkMuted, marginTop: Space.xs },
+    badge: { borderRadius: Radius.pill, paddingHorizontal: Space.md, paddingVertical: Space.xs },
+    badgeGreen: { backgroundColor: Brand.openBg },
+    badgeRed: { backgroundColor: Brand.warnBg },
+    badgeText: { ...Type.micro },
+    badgeTextGreen: { color: Brand.open },
+    badgeTextRed: { color: Brand.warnInk },
+    buttonRow: { flexDirection: 'row', gap: Space.sm, marginTop: Space.md },
     btnGhost: {
-        flex: 1, borderRadius: 8, paddingVertical: 8,
-        borderWidth: 1, borderColor: '#BF5700', alignItems: 'center',
+        flex: 1, borderRadius: Radius.sm, paddingVertical: Space.sm,
+        borderWidth: 1, borderColor: Brand.orange, alignItems: 'center',
     },
-    btnGhostText: { color: '#BF5700', fontSize: 13 },
+    btnGhostText: { ...Type.bodySm, color: Brand.orange },
     btnRed: {
-        flex: 1, borderRadius: 8, paddingVertical: 8,
-        borderWidth: 1, borderColor: '#A32D2D', alignItems: 'center',
+        flex: 1, borderRadius: Radius.sm, paddingVertical: Space.sm,
+        borderWidth: 1, borderColor: Brand.danger, alignItems: 'center',
     },
-    btnRedText: { color: '#A32D2D', fontSize: 13 },
+    btnRedText: { ...Type.bodySm, color: Brand.danger },
 });
