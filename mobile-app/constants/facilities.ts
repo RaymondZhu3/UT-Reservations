@@ -13,8 +13,8 @@ export const FACILITIES: Record<string, number> = {
 };
 
 // Facility code (as it appears in court labels like "GRE - RB - 01") -> full
-// name. Single source of truth — lib/reservations.ts's formatFacility()
-// imports this rather than keeping its own copy.
+// name. lib/reservations.ts's formatFacility() imports this rather than
+// keeping its own copy.
 export const FACILITY_CODE_MAP: Record<string, string> = {
     GRE: 'Gregory Gym',
     CCF: 'Caven-Clark',
@@ -30,7 +30,7 @@ export const FACILITY_NAMES_BY_ID: Record<number, string> = Object.fromEntries(
 );
 
 // UT's hours page names buildings differently than reserve_courts.php, so the
-// join needs this map. If a facility shows no hours, check here first — a
+// join needs this map. If a facility shows no hours, check here first: a
 // renamed row breaks the match silently.
 export const HOURS_FACILITY_NAMES: Record<number, string> = {
     28: 'Bellmont Hall',

@@ -11,7 +11,7 @@ import { Brand, Radius, Space, Type } from '@/constants/theme';
 
 // The full reservation manager: every upcoming booking, soonest first, each
 // with its own Remind/Cancel. Home shows only the next one. Reads the same
-// ReservationsContext, so there is no second scrape — one WebView, one source.
+// ReservationsContext, so there is no second scrape.
 export default function MyReservationsTab() {
     const { upcoming, loading, refreshing, refresh } = useReservations();
     const router = useRouter();
@@ -21,14 +21,13 @@ export default function MyReservationsTab() {
     // triggered a visible refresh. This flag records whether the pull happened
     // here. Without it, pulling on Home and switching tabs mounts this screen's
     // RefreshControl already spinning, and a control born in the refreshing
-    // state does not animate away — it sticks until a scroll or a remount.
+    // state does not animate away; it sticks until a scroll or a remount.
     const [pulled, setPulled] = useState(false);
     useEffect(() => {
         if (!pulled || refreshing) return;
         setPulled(false);
     }, [pulled, refreshing]);
 
-    // Refresh on every focus
     useFocusEffect(
         useCallback(() => {
             refresh();

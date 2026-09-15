@@ -6,24 +6,18 @@ import { toIsoDateString } from '@/lib/dates';
 import type { CourtSlot, FacilityAvailability } from '@/constants/types';
 
 type Options = {
-    // Which facilities to scrape. Defaults to all of them. Pass a single id
-    // once the user has picked a facility — there is no reason to fire 8
-    // hidden WebViews to answer a question about one.
+    // Defaults to all 8. Pass one id once the user has picked a facility;
+    // firing 8 hidden WebViews to answer a question about one is wasteful.
     facilityIds?: number[];
-    // Defaults to today. Passed straight to AvailabilityScraper, which
-    // builds it into the page URL.
+    // Defaults to today. Becomes the date param in the page URL.
     date?: Date;
-    // Debug only — see AvailabilityScraper's debugVisible comment.
+    // See AvailabilityScraper's debugVisible.
     debugVisible?: boolean;
 };
 
 // Runs one hidden WebView per requested facility and aggregates the results.
-// Render `scrapers` somewhere in the tree (it renders clipped, zero-height
-// views) and read `availability`.
-//
-// Usage in a screen:
-//   const { availability, loading, refresh, scrapers } = useCourtAvailability({ facilityIds: [40], date });
-//   return <View style={{ flex: 1 }}>{scrapers}<YourAvailabilityGrid data={availability} /></View>;
+// The caller must render `scrapers` somewhere in the tree (they are clipped,
+// zero-height views) or nothing ever loads.
 export function useCourtAvailability(options: Options = {}) {
     const date = options.date ?? new Date();
     const dateKey = toIsoDateString(date);
@@ -50,9 +44,9 @@ export function useCourtAvailability(options: Options = {}) {
             [facilityId]: { ...prev[facilityId], slots, loading: false, error: undefined },
         }));
 
-        // Crowdsourced write: this only fires because a real person's own
-        // scrape just succeeded, so it's a byproduct of normal use, not a
-        // background job. Fire-and-forget — never blocks or fails the UI.
+        // Crowdsourced write. Only ever fires off a real person's own scrape,
+        // never on a timer, which is what UT's authentication policy requires.
+        // Fire-and-forget: it must not block or fail the UI.
         const facilityName = FACILITY_NAMES_BY_ID[facilityId] ?? String(facilityId);
         pushFacilityAvailability(facilityId, facilityName, date, slots);
         // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -77,10 +71,9 @@ export function useCourtAvailability(options: Options = {}) {
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [facilityIds]);
 
-    // Changing the date changes each scraper's source URL, which makes the
-    // WebView navigate on its own — but we still need to reset our own
-    // loading/result state so the UI doesn't keep showing yesterday's slots
-    // labeled as fresh while the new page loads.
+    // A new date changes each scraper's source URL, so the WebViews navigate
+    // on their own. Local state still has to be reset, or the UI shows the
+    // previous day's slots as current while the new page loads.
     useEffect(() => {
         setResults(prev => {
             const updated: Record<number, FacilityAvailability> = {};

@@ -8,14 +8,10 @@ import { OpaqueColorValue, type StyleProp, type TextStyle } from 'react-native';
 type MaterialIconName = ComponentProps<typeof MaterialIcons>['name'];
 
 /**
- * SF Symbol -> Material Icons, for Android and web. Add a name here when you
- * start using it: `IconSymbolName` is derived from this object, so an unmapped
- * name is a compile error rather than a blank space on Android.
- *
- * `satisfies Partial<Record<...>>`, not `as` — `as` widens the key type to
- * every SF Symbol and defeats that check.
- *
- * Material Icons: https://icons.expo.fyi
+ * SF Symbol -> Material Icons. IconSymbolName is derived from this object, so
+ * an unmapped name is a compile error instead of a blank space on Android.
+ * `satisfies` rather than `as`: `as` widens the key type to every SF Symbol
+ * and defeats that check. Names: https://icons.expo.fyi
  */
 const MAPPING = {
   house: 'home',
@@ -25,11 +21,6 @@ const MAPPING = {
 
 export type IconSymbolName = keyof typeof MAPPING;
 
-/**
- * An icon component that uses native SF Symbols on iOS, and Material Icons on Android and web.
- * This ensures a consistent look across platforms, and optimal resource usage.
- * Icon `name`s are based on SF Symbols and require manual mapping to Material Icons.
- */
 export function IconSymbol({
   name,
   size = 24,

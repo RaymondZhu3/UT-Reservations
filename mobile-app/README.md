@@ -1,20 +1,12 @@
-# UT Reserve
+# UT Reserve — mobile app
 
-Mobile app for UT Austin students to book RecSports courts and LibCal study rooms — see `../context.md` for the full project writeup (architecture, key decisions, gotchas).
+Expo / React Native client. **See the [root README](../README.md)** for
+architecture, setup, environment variables, and the project's policy
+constraints.
 
-## Get started
+Quick start (requires a development build — Expo Go will not work):
 
 ```bash
 npm install
 npx expo start --dev-client
 ```
-
-Requires a dev build, not Expo Go — `expo-notifications` doesn't work properly in Expo Go.
-
-If Metro (port 8081) is blocked by Windows Firewall, run as administrator:
-
-```bash
-netsh advfirewall firewall add rule name="Expo Metro" dir=in action=allow protocol=TCP localport=8081
-```
-
-Fallback: `npx expo start --dev-client --tunnel` (requires `@expo/ngrok`).

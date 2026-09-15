@@ -1,27 +1,24 @@
-// Pure date math for UT's hours periods. Kept free of imports so
-// scripts/check-hours-period.js can exercise it without a network layer.
-// lib/facilityHours.ts is the data-access layer on top and re-exports these.
+// Date math for UT's hours periods. No imports, so scripts/check-hours-period.js
+// can run it directly. lib/facilityHours.ts wraps this and re-exports it.
 
-/** Inclusive local-time range that a scraped set of hours actually applies to. */
+/** Inclusive local-time range a scraped set of hours applies to. */
 export interface HoursPeriod {
-    /** Local midnight on the first day the hours apply to. */
     start: Date;
-    /** Local end-of-day on the last day they apply to. */
     end: Date;
 }
 
 export type HoursStatus =
-    /** The requested date falls inside the scraped period. Safe to state as fact. */
+    /** Date falls inside the scraped period. */
     | 'current'
-    /** The requested date is outside the period these hours describe. */
+    /** Date is outside the period these hours describe. */
     | 'stale'
-    /** No period label, or one we couldn't parse — we cannot judge either way. */
+    /** No period label, or unparseable. Can't judge either way. */
     | 'unknown';
 
-// UT writes the period as a bare date range, e.g. "8/24 - 10/31/26" — the
-// start carries no year of its own and the separator may be a hyphen or an
-// en dash. scraper.py's find_period_label() captures the whole heading, so a
-// leading word or two ("Fall 8/24 - 10/31/26") can be present.
+// UT writes the period as a bare date range, e.g. "8/24 - 10/31/26". The start
+// carries no year and the separator may be a hyphen or an en dash.
+// scraper.py's find_period_label() captures the whole heading, so a leading
+// word or two ("Fall 8/24 - 10/31/26") can be present.
 const PERIOD_RE = /(\d{1,2})\/(\d{1,2})\s*[-–—]\s*(\d{1,2})\/(\d{1,2})(?:\/(\d{2,4}))?/;
 
 function fullYear(raw: string): number {
@@ -30,11 +27,11 @@ function fullYear(raw: string): number {
 }
 
 /**
- * Turn `period_label` into a date range, or null if it's missing or unparseable.
+ * `period_label` to a date range, or null if missing or unparseable.
  * `reference` supplies the year when the label omits one.
  *
- * Built with `new Date(y, m, d)`, never from a string — a date-only ISO string
- * parses as UTC midnight, which in Central is the previous evening.
+ * Uses `new Date(y, m, d)` rather than a string: a date-only ISO string parses
+ * as UTC midnight, which in Central is the previous evening.
  */
 export function parsePeriodLabel(
     label: string | null | undefined,
@@ -48,10 +45,10 @@ export function parsePeriodLabel(
     const [, startMonth, startDay, endMonth, endDay, rawYear] = match;
 
     // Only the end date carries a year, so the start's is inferred. The wrap
-    // test is narrow — late start AND early end — because a looser rule reads a
-    // reversed label like "10/31 - 8/24/26" as a real 10-month range, and a
-    // too-wide period marks every date 'current' and defeats the check. Erring
-    // strict only yields `unknown`, which still renders the hours.
+    // test requires both a late start and an early end: a looser rule reads a
+    // reversed label like "10/31 - 8/24/26" as a real 10-month range, which
+    // would mark every date 'current'. Being too strict only yields 'unknown',
+    // and the hours still render.
     const endYear = rawYear ? fullYear(rawYear) : reference.getFullYear();
     const wrapsNewYear =
         Number(startMonth) > Number(endMonth) &&

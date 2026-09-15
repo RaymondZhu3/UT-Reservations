@@ -84,11 +84,10 @@ export default function CourtsTab() {
 
     // Every row comes from the same scrape run, so one label covers the table.
     const hoursPeriod = parsePeriodLabel(hoursMeta.periodLabel);
-    // True a week before every period rollover, because the picker runs 8 days
-    // out — not only when the scraper stops.
+    // True a week before every period rollover, since the picker runs 8 days
+    // out. Not only when the scraper stops.
     const outsidePeriod = !!hoursPeriod && !periodCovers(hoursPeriod, selectedDate);
 
-    // Say which period the hours came from
     const hoursCaption = hoursError ? (
         <Text style={styles.headerSubWarn}>Hours unavailable — pull to retry</Text>
     ) : outsidePeriod ? (
@@ -144,19 +143,13 @@ export default function CourtsTab() {
                         <Text style={styles.sectionLabel}>{sport}</Text>
                         {facilities.map(({ name, id }) => {
                             const overview = overviewFor(id);
-                            // Slots whose start time has passed are not
-                            // availability. describeOpenSlots filters them and
-                            // collapses duplicate times across courts, so a
-                            // facility with three free courts at 4pm reads
-                            // "Open at 4:00 PM" rather than repeating it.
                             const openSummary = overview ? describeOpenSlots(overview) : null;
-                            // Hours track the date the user is browsing, not
-                            // today — picking Saturday should show Saturday's.
+                            // Hours track the date being browsed, not today:
+                            // picking Saturday should show Saturday's.
                             const hoursRow = hoursByFacility[id];
                             const day = hoursRow ? hoursForDay(hoursRow, selectedDate) : null;
-                            // 'stale' = these hours describe a different period
-                            // than the date being browsed, so don't assert them.
-                            // The header caption says why.
+                            // Don't assert hours from a different period; the
+                            // header caption explains the gap instead.
                             const hours = day && day.status !== 'stale' ? day.hours : null;
                             const closed = isClosed(hours);
                             return (

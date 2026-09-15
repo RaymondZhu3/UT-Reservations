@@ -1,70 +1,44 @@
-/**
- * Design tokens for UT Reserve.
- *
- * Rules:
- * - No screen should contain a raw hex string, font size, or spacing number.
- * - Orange is the only accent. Green means "open", red means "closed" or
- *   "destructive". Nothing else gets to be colorful.
- * - Spacing comes off the 4pt grid via `Space`.
- */
+// Design tokens. Screens should not contain raw hex strings, font sizes or
+// spacing numbers. Orange is the only accent; green is "open", red is "closed"
+// or destructive.
 
 import { Platform, type TextStyle } from 'react-native';
 
-/** Named by role, not by value, so a call site reads as intent. */
 export const Brand = {
-    /** UT burnt orange. The single accent — brand titles, primary buttons, active tab. */
     orange: '#BF5700',
-    /** Text/icons that sit ON orange. */
     onOrange: '#FFFFFF',
 
-    /** App background behind cards. */
+    // Surfaces, lightest to heaviest.
     bg: '#F5F5F5',
-    /** Card and header surfaces. */
     surface: '#FFFFFF',
-    /** Hairline around cards. */
     border: '#E5E5E5',
-    /** Heavier rule under headers. */
     divider: '#EEEEEE',
 
-    /** Primary text. */
+    // Text, darkest to faintest. inkGhost is decorative only (chevrons).
     ink: '#1A1A1A',
-    /** Body-weight secondary text — facility hours, date chips. */
     inkSoft: '#666666',
-    /** Secondary text — subtitles, card subs, section labels. */
     inkMuted: '#888888',
-    /** Tertiary text — empty states, disabled. */
     inkFaint: '#AAAAAA',
-    /** Chevrons and other decorative marks. */
     inkGhost: '#CCCCCC',
 
-    /** "Open" / success text. */
     open: '#3B6D11',
-    /** Tinted background behind open/success badges. */
     openBg: '#EAF3DE',
-    /** Left edge marker on an available slot card. */
     openEdge: '#639922',
 
-    /** "Closed" — a statement about the facility, not about the user's action. */
+    // `closed` describes the facility, `danger` describes the user's action
+    // (cancelling). Keeping them separate stops a closed badge reading as a
+    // destructive button.
     closed: '#BB0000',
-    /** Destructive action (cancel a reservation). Deliberately not `closed`. */
     danger: '#A32D2D',
-    /** Tinted background behind "today" / attention badges. */
     warnBg: '#FAEEDA',
-    /** Text on warnBg. */
     warnInk: '#854F0B',
 } as const;
 
-/**
- * SF Rounded, used on brand titles only. It's a system face, so no bundle cost
- * and no font-loading gate before first render. Body copy stays on default SF,
- * which iOS optically tunes for small sizes. Other platforms fall through.
- */
+// SF Rounded on brand titles only. A system face, so no bundle cost and no
+// font-loading gate before first render. Non-iOS falls through to the default.
 const roundedFamily = Platform.select({ ios: 'ui-rounded', default: undefined });
 
-/**
- * Seven steps, replacing eight ad-hoc sizes and four weight spellings.
- * Use as `{ ...Type.title, color: Brand.orange }`.
- */
+/** Spread into a style, e.g. `{ ...Type.title, color: Brand.orange }`. */
 export const Type = {
     /** Home greeting, welcome screen wordmark. */
     display: {
@@ -73,7 +47,7 @@ export const Type = {
         letterSpacing: -0.4,
         fontFamily: roundedFamily,
     },
-    /** Screen headers — "Find a court", "My Reservations". */
+    /** Screen headers: "Find a court", "My Reservations". */
     title: {
         fontSize: 20,
         fontWeight: '700',

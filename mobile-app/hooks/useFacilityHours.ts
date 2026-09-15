@@ -3,8 +3,8 @@ import { fetchFacilityHours } from '@/lib/facilityHours';
 import { HOURS_FACILITY_NAMES } from '@/constants/facilities';
 import type { FacilityHours } from '@/constants/types';
 
-// Keyed by facility id, not name — UT names buildings differently on the
-// hours page than on reserve_courts.php.
+// Keyed by facility id, not name: UT names buildings differently on the hours
+// page than on reserve_courts.php.
 export function useFacilityHours() {
     const [byFacilityId, setByFacilityId] = useState<Record<number, FacilityHours>>({});
     // Every row is written by the same scrape run, so one row's period and
@@ -21,7 +21,7 @@ export function useFacilityHours() {
         const result = await fetchFacilityHours();
 
         if (result.error) {
-            // Same rule as useFacilityOverview: no hours beats wrong hours.
+            // Same rule as useFacilityOverview: drop rows on a failed read.
             setByFacilityId({});
             setMeta({ periodLabel: null, scrapedAt: null });
             setError(result.error);

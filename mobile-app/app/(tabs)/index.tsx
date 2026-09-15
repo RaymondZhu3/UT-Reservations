@@ -21,11 +21,9 @@ function greeting(): string {
     return 'Good Evening';
 }
 
-// Home is a dashboard, not the full reservation manager — it shows just
-// the single next upcoming reservation (if any) plus a link to My
-// Reservations for the full list. Managing everything you've booked lives
-// there instead, so this screen stays a quick glance rather than
-// duplicating that whole UI.
+// Home is a dashboard, not the full reservation manager. It shows the single
+// next upcoming reservation plus a link to My Reservations, which owns the
+// full list and the per-reservation actions.
 export default function HomeScreen() {
     const router = useRouter();
     const insets = useSafeAreaInsets();
@@ -39,8 +37,7 @@ export default function HomeScreen() {
     const [showUpdated, setShowUpdated] = useState(false);
     // "Up to date" confirms a refresh the user asked for. Without this flag the
     // banner fires whenever the loading flags settle, which the focus refetch
-    // does on every switch to this tab — flashing green and shifting the layout
-    // to answer a question nobody asked.
+    // does on every switch to this tab, flashing green and shifting the layout.
     const [pullRequested, setPullRequested] = useState(false);
 
     const isFocused = useIsFocused();
@@ -56,17 +53,15 @@ export default function HomeScreen() {
         if (loading || refreshing || overviewLoading) return;
 
         setPullRequested(false);
-        // A failed read is not something to congratulate; renderOpenNow says so
-        // in place instead.
+        // Don't confirm success on a failed read; renderOpenNow reports it.
         if (!overviewError) setShowUpdated(true);
     }, [pullRequested, loading, refreshing, overviewLoading, overviewError]);
 
     // The banner's lifetime is keyed on the banner itself. Scheduling this
     // timeout in the effect above cannot work: that effect clears
     // `pullRequested`, which is one of its own dependencies, so React runs its
-    // cleanup on the very next render and the timeout is cancelled before it
-    // can fire. An effect that writes to its own dependency list cannot also
-    // own a timer.
+    // cleanup on the very next render and cancels the timeout before it
+    // fires.
     useEffect(() => {
         if (!showUpdated) return;
         const timeout = setTimeout(() => setShowUpdated(false), 2000);
@@ -148,10 +143,10 @@ export default function HomeScreen() {
                 contentContainerStyle={styles.container}
                 refreshControl={
                     <RefreshControl
-                        // `refreshing` is context state — a fact about the app,
-                        // not about this screen. Gate it on this screen having
-                        // been the one pulled, or the spinner follows the
-                        // refresh onto whatever tab you switch to.
+                        // `refreshing` is context state, shared by every
+                        // screen. Gate it on this screen having been the one
+                        // pulled, or the spinner follows the refresh across
+                        // tabs.
                         refreshing={pullRequested && refreshing}
                         onRefresh={() => {
                             debugLog('Home — manual pull-to-refresh');

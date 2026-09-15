@@ -12,8 +12,8 @@ import { ScreenHeader } from '@/components/ui/ScreenHeader';
 import { Brand, Radius, Space, Type } from '@/constants/theme';
 
 // When UT rejects a booking it stays on the same page and shows an error
-// banner instead of redirecting, so no navigation fires and we'd spin until
-// the timeout. This reads the banner so we can show the real reason.
+// banner instead of redirecting, so no navigation fires and the UI would spin
+// until the timeout. This reads the banner to surface the real reason.
 const BOOKING_RESULT_JS = `
     (function() {
         try {
@@ -47,8 +47,6 @@ export default function CourtAvailabilityScreen() {
     const parsedDate = useMemo(() => new Date(date), [date]);
     const facilityIds = useMemo(() => [parsedFacilityId], [parsedFacilityId]);
 
-    // Set true to make the scraper's hidden WebView visible, to inspect what
-    // reserve_courts.php actually returns for the current facility_id and date.
     const DEBUG_VISIBLE_SCRAPER = false;
 
     // Catches UT's one-per-day limit before firing a booking UT would reject.
@@ -61,15 +59,10 @@ export default function CourtAvailabilityScreen() {
     });
     const result = availability[0];
 
-    // Set once the user confirms a slot — mounting this WebView is what
-    // actually places the reservation, silently, using the user's own
-    // live session. Same pattern as the home screen's cancel flow: no
-    // visible browser, just a hidden WebView hitting the action URL and
-    // watching for UT's own post-action redirect.
+    // Set once the user confirms a slot. Mounting the WebView this drives is
+    // what actually places the reservation.
     const [bookingSlot, setBookingSlot] = useState<CourtSlot | null>(null);
 
-    // Set true to visually inspect the booking WebView (same trick as
-    // AvailabilityScraper.tsx's debugVisible).
     const DEBUG_VISIBLE_BOOKING = false;
 
     const bookingTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -82,10 +75,9 @@ export default function CourtAvailabilityScreen() {
         }
     }
 
-    // Fallback in case handleBookingNavChange never sees a recognized
-    // redirect (error page, re-auth, etc.) — without this the UI could
-    // spin on "Booking your court..." forever with no indication anything
-    // went wrong.
+    // Fallback for when handleBookingNavChange never sees a recognized
+    // redirect (error page, re-auth, and so on). Without it the UI spins on
+    // "Booking your court..." with no indication anything went wrong.
     useEffect(() => {
         if (!bookingSlot) return;
         bookingTimeoutRef.current = setTimeout(() => {

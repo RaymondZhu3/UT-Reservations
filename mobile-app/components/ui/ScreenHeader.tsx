@@ -5,17 +5,16 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Brand, Space, Type } from '@/constants/theme';
 
 // Header bar for a tab root or a pushed screen. Top padding comes from the OS
-// safe-area inset, which is the only value correct on every device — a fixed
-// number is too large on an SE and too small on a Dynamic Island phone.
+// safe-area inset; a fixed number is wrong on an SE in one direction and on a
+// Dynamic Island phone in the other.
 type Props = {
     title: string;
-    /** ReactNode, not string — Courts passes a color-coded staleness caption. */
+    /** ReactNode, not string: Courts passes a color-coded staleness caption. */
     subtitle?: ReactNode;
     /** Trailing control, e.g. the Logout button on My Reservations. */
     right?: ReactNode;
-    /** Renders a back affordance above the title. */
     onBack?: () => void;
-    /** Tab roots use `title`; pushed screens use `heading` — orange is
+    /** Tab roots use `title`, pushed screens use `heading`. Orange is
      *  reserved for a tab's own identity. */
     size?: 'title' | 'heading';
 };

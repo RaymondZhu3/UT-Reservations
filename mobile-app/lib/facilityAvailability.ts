@@ -5,13 +5,12 @@ import type { CourtSlot, FacilityOverviewRow } from '@/constants/types';
 const SLOT_LENGTH_MS = 60 * 60 * 1000;
 
 // Fire-and-forget write, called after an on-device scrape completes
-// (hooks/useCourtAvailability.tsx). It therefore only ever runs as a side
-// effect of a person actively using the app — never on a timer, never
-// unattended, which is the constraint UT's authentication policy imposes.
-// Stores the slots themselves rather than a count, so other users' home
-// screens can show real times.
+// (hooks/useCourtAvailability.tsx), so it only ever runs as a side effect of
+// someone actively using the app, never on a timer. That is what UT's
+// authentication policy requires. Stores the slots themselves rather than a
+// count, so other users' home screens can show real times.
 //
-// Never throws: a failed write is a lost data point, not a reason to break the
+// Never throws: a failed write costs one data point and must not break the
 // screen in front of the user.
 export async function pushFacilityAvailability(
     facilityId: number,
@@ -39,17 +38,16 @@ export async function pushFacilityAvailability(
 }
 
 // The read path must not swallow errors. "No courts are open" and "the
-// database was unreachable" are different facts and a user acts differently on
-// each, so the failure is returned rather than erased. The write path is
-// allowed to fail quietly; a lost data point is not worth breaking a screen.
+// database was unreachable" lead a user to do different things, so the failure
+// is returned rather than erased. The write path above may fail quietly.
 export interface OverviewResult {
     rows: FacilityOverviewRow[];
     error: string | null;
 }
 
-// Read model for the home screen's "open now" section — today's
-// crowdsourced snapshot per facility, no scraping involved. Freshness
-// depends entirely on when some user last scraped that facility today.
+// Read model for the home screen's "open now" section: today's crowdsourced
+// snapshot per facility, no scraping involved. Freshness depends entirely on
+// when some user last scraped that facility today.
 export async function fetchTodayOverview(): Promise<OverviewResult> {
     const { data, error } = await supabase
         .from('facility_availability')
@@ -65,21 +63,20 @@ export async function fetchTodayOverview(): Promise<OverviewResult> {
     return { rows: data ?? [], error: null };
 }
 
-// A row holds every slot that was open when someone last scraped that
-// facility TODAY — including slots whose start time has since passed. The
-// home screen was rendering those unfiltered, so at 3:08pm it advertised
-// noon courts under a heading that says "OPEN NOW".
+// A row holds every slot that was open when someone last scraped that facility
+// today, including slots whose start time has since passed. Those have to be
+// filtered out, or a heading reading "OPEN NOW" advertises noon courts at 3pm.
 //
-// Only today's rows need filtering: a row for a future date is entirely
-// ahead of `now` by definition.
+// Only today's rows need it: a row for a future date is entirely ahead of
+// `now` by definition.
 export function futureSlots(row: FacilityOverviewRow, now: Date = new Date()): CourtSlot[] {
     if (row.date !== toIsoDateString(now)) return row.slots;
 
     return row.slots.filter(slot => {
         const { hours, minutes } = parseUtTime(slot.time);
-        // Keep anything we can't parse rather than silently dropping it —
-        // hiding real availability is a worse failure than showing one odd
-        // row, and a parse that starts returning NaN should be visible.
+        // Keep anything that fails to parse rather than dropping it. Hiding
+        // real availability is worse than showing one odd row, and a parse
+        // that starts returning NaN should be visible.
         if (Number.isNaN(hours) || Number.isNaN(minutes)) return true;
 
         const start = new Date(now);
@@ -88,9 +85,9 @@ export function futureSlots(row: FacilityOverviewRow, now: Date = new Date()): C
     });
 }
 
-// Slots are per (court, time), so a facility with three free courts at 4pm
-// produced "Open at 4:00 PM, 4:00 PM, 4:00 PM". The user is choosing a
-// time, not a court — collapse to distinct times, in chronological order.
+// Slots are per (court, time), so three free courts at 4pm would read
+// "Open at 4:00 PM, 4:00 PM, 4:00 PM". The user is picking a time, not a
+// court, so collapse to distinct times in chronological order.
 export function distinctTimes(slots: CourtSlot[]): string[] {
     const seen = new Set<string>();
     const times: string[] = [];
@@ -108,9 +105,9 @@ export function distinctTimes(slots: CourtSlot[]): string[] {
     });
 }
 
-// Shared by Home and the Courts tab so the two can't drift apart on what
-// "open" means. Returns null when nothing is still open, which the caller
-// must render differently from "we have no data" — see OverviewResult.
+// Shared by Home and the Courts tab so the two can't drift on what "open"
+// means. Returns null when nothing is still open, which the caller must render
+// differently from "no data". See OverviewResult.
 export function describeOpenSlots(row: FacilityOverviewRow, now: Date = new Date()): string | null {
     const open = futureSlots(row, now);
     if (open.length === 0) return null;

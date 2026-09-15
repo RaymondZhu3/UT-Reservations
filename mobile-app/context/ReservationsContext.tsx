@@ -8,8 +8,6 @@ import type { Reservation } from '@/constants/types';
 
 const MY_RESERVATIONS_URL = 'https://apps.rs.utexas.edu/app/myrecsports/myreservations.php';
 
-// Ends UT's session. Clearing SecureStore alone leaves the Shibboleth cookie
-// live in the WebView, so the next person to tap Login lands in this account.
 const LOGOUT_URL = 'https://apps.rs.utexas.edu/logout';
 
 // Scrapes the reservation cards on myreservations.php. One WebView and one
@@ -43,8 +41,8 @@ const SCRAPE_JS = `
             window.ReactNativeWebView.postMessage(JSON.stringify({
                 type: 'reservations',
                 // Which page this ran on. onLoadEnd scrapes whatever page the
-                // WebView landed on, and index.php has no reservation cards --
-                // so a scrape there honestly reports zero of the wrong page.
+                // WebView landed on, and index.php has no reservation cards,
+                // so a scrape there returns zero for the wrong page.
                 url: window.location.href,
                 upcoming: upcoming
             }));
@@ -58,10 +56,8 @@ const SCRAPE_JS = `
     true;
 `;
 
-// session states:
-// 'unknown'  = haven't heard back from the WebView yet
-// 'valid'    = session is good
-// 'invalid'  = session expired, user's been sent to login
+// 'unknown' means the WebView has not reported back yet, which is distinct
+// from 'invalid' and must not redirect to login.
 type SessionState = 'unknown' | 'valid' | 'invalid';
 
 type ReservationsContextType = {
@@ -108,15 +104,14 @@ export function ReservationsProvider({ children }: { children: ReactNode }) {
     // to be read and written synchronously at call time.
     const isRefreshingRef = useRef(false);
 
-    // Moved from index.tsx: skip straight to login if we've never logged
-    // in, and fall back to login if the WebView never responds at all.
+    // Skip straight to login when there is no stored session, and fall back
+    // to login if the WebView never responds at all.
     useEffect(() => {
         async function checkAuth() {
             const hasLoggedIn = await SecureStore.getItemAsync('has_logged_in');
             if (!hasLoggedIn) {
                 // Never-logged-in users, and App Review, land on the native
-                // welcome screen rather than straight into UT's SSO page.
-                // See app/welcome.tsx.
+                // welcome screen rather than UT's SSO page. See app/welcome.tsx.
                 router.replace('/welcome');
             }
         }
@@ -136,7 +131,7 @@ export function ReservationsProvider({ children }: { children: ReactNode }) {
     // Navigates explicitly to MY_RESERVATIONS_URL rather than calling
     // .reload(), which reloads whatever page the WebView currently sits on.
     // UT's cancel redirect chain can strand it on index.php, which has no
-    // reservation cards and so scrapes as a confident, permanent zero.
+    // reservation cards, so every later refresh would scrape zero.
     function refresh(options?: { visible?: boolean }) {
         if (session === 'invalid') {
             debugLog('refresh() skipped — session invalid');
@@ -158,7 +153,6 @@ export function ReservationsProvider({ children }: { children: ReactNode }) {
         `);
     }
 
-    // Executes a cancel by navigating the same hidden WebView to UT's release URL.
     function cancelReservation(cancelUrl: string) {
         debugLog('cancelReservation() — navigating shared WebView to', cancelUrl);
         webviewRef.current?.injectJavaScript(`
@@ -179,7 +173,7 @@ export function ReservationsProvider({ children }: { children: ReactNode }) {
     async function logout() {
         debugLog('logout() — navigating shared WebView to', LOGOUT_URL);
 
-        // Stop the expiry handler from redirecting too — we're already going.
+        // Stop the expiry handler redirecting as well; navigation is underway.
         redirectedRef.current = true;
         sessionRef.current = 'invalid';
         setSession('invalid');
@@ -234,12 +228,10 @@ export function ReservationsProvider({ children }: { children: ReactNode }) {
                     isRefreshingRef.current = false;
                     return;
                 }
-                // Logs id (parsed out of cancelUrl) alongside facility/date/
-                // time, not just the latter — a rebooked identical slot
-                // looks textually identical to the original otherwise, and
-                // the id is what actually tells "same reservation, cancel
-                // silently failed" apart from "new reservation, just slow
-                // to show up."
+                // Logs the id parsed out of cancelUrl alongside
+                // facility/date/time. A rebooked identical slot is textually
+                // identical to the original, so only the id separates "cancel
+                // silently failed" from "new reservation, slow to appear".
                 debugLog('Reservations scrape result:', parsed.upcoming.length, 'upcoming —', parsed.upcoming.map((r: Reservation) => {
                     const idMatch = r.cancelUrl.match(/[?&]id=(\d+)/);
                     return `${r.facility} ${r.date} ${r.time} (id=${idMatch ? idMatch[1] : '?'})`;
@@ -305,12 +297,10 @@ export function ReservationsProvider({ children }: { children: ReactNode }) {
                     onMessage={handleMessage}
                     onNavigationStateChange={handleNavigationChange}
                     style={{ height: 1 }}
-                    // This WebView exists purely to reflect current server
-                    // state (reservations change from booking/cancelling
-                    // constantly) — a cached response is never correct here,
-                    // only ever stale. Without this, .reload() can silently
-                    // serve a cached myreservations.php from before the
-                    // most recent booking/cancel.
+                    // This WebView exists to reflect current server state, and
+                    // reservations change constantly. Without this, .reload()
+                    // can serve a cached myreservations.php from before the
+                    // most recent booking or cancel.
                     cacheEnabled={false}
                 />
             </View>

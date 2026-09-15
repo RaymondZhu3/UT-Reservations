@@ -3,11 +3,9 @@ import { StyleSheet, TouchableOpacity, View, type StyleProp, type ViewStyle } fr
 
 import { Brand, Elevation, Radius, Space } from '@/constants/theme';
 
-// The app's standard content block. `onPress` picks the element, so a
-// non-interactive card cannot dim on tap and do nothing.
-//
-// court-availability's slot tiles are intentionally not Cards: a two-column
-// grid of small tiles is a different shape from a full-width block.
+// Standard content block. `onPress` picks the element, so a non-interactive
+// card can't dim on tap and do nothing. court-availability's slot tiles are
+// deliberately not Cards; a two-column grid is a different shape.
 type CardProps = {
     children: ReactNode;
     style?: StyleProp<ViewStyle>;

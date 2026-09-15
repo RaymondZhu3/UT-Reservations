@@ -6,10 +6,10 @@ import { parsePeriodLabel, periodCovers, type HoursPeriod, type HoursStatus } fr
 export { parsePeriodLabel, periodCovers };
 export type { HoursPeriod, HoursStatus };
 
-// Read-only — only backend/scraper.py writes this table.
-// Returns the error rather than swallowing it, for the same reason as
-// fetchTodayOverview: "UT lists no hours" and "we couldn't reach the
-// database" must not render identically.
+// Read-only; only backend/scraper.py writes this table. Returns the error
+// rather than swallowing it, for the same reason as fetchTodayOverview:
+// "UT lists no hours" and "the database was unreachable" must not render
+// identically.
 export interface HoursResult {
     rows: FacilityHours[];
     error: string | null;
@@ -36,12 +36,11 @@ export interface DayHours {
 }
 
 /**
- * Hours for one facility on one date, plus a verdict on whether they can
- * honestly be called current.
+ * Hours for one facility on one date, plus whether they can be called current.
  *
- * `unknown` still carries `hours`: a missing or unparseable label is absence of
- * evidence, not evidence of staleness, and refusing to render on it would let
- * one UT page redesign strip hours from the whole app.
+ * `unknown` still carries `hours`: an unparseable label doesn't make the hours
+ * stale, and refusing to render on it would let one UT page redesign strip
+ * hours from the whole app.
  */
 export function hoursForDay(row: FacilityHours, date: Date = new Date()): DayHours {
     // One column per day group. getDay(): 0 = Sunday, 6 = Saturday.
@@ -67,7 +66,7 @@ export function hoursForDay(row: FacilityHours, date: Date = new Date()): DayHou
     };
 }
 
-// Lots of "Closed" during breaks — worth styling differently.
+// Lots of "Closed" during breaks, which the UI styles differently.
 export function isClosed(hours: string | null): boolean {
     return !!hours && /closed/i.test(hours);
 }

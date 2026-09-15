@@ -1,7 +1,6 @@
 // Date helpers shared by the facility picker, the scraper, and Supabase
-// reads/writes. Two formats matter here: UT's own pages use MM/DD/YYYY
-// (see parseDate in app/(tabs)/index.tsx), Postgres date columns use
-// YYYY-MM-DD. Keep conversions in one place so they don't drift.
+// reads/writes. Two formats matter: UT's pages use MM/DD/YYYY, Postgres date
+// columns use YYYY-MM-DD. Conversions live here so they don't drift.
 
 export function toUtDateString(date: Date): string {
     const mm = String(date.getMonth() + 1).padStart(2, '0');
@@ -10,17 +9,16 @@ export function toUtDateString(date: Date): string {
     return `${mm}/${dd}/${yyyy}`;
 }
 
-// Inverse of toUtDateString — parses UT's "MM/DD/YYYY" reservation dates
-// back into a Date. Used anywhere reservation data (scraped from
-// myreservations.php) needs to be compared, labeled, or scheduled against.
+// Inverse of toUtDateString. Parses UT's "MM/DD/YYYY" reservation dates back
+// into a Date, for anything that compares, labels or schedules against
+// reservation data scraped from myreservations.php.
 export function parseUtDateString(raw: string): Date {
     const [mm, dd, yyyy] = raw.split('/');
-    // Build from numeric components rather than a "YYYY-MM-DD" string —
-    // that date-only ISO form parses as UTC midnight, which JS then
-    // renders back in local time and can roll onto the previous day
-    // (e.g. a CDT reservation for the 5th displaying as the 4th). The
-    // (year, month, day) constructor always uses local time, matching
-    // dateLabel's own local "today" comparison.
+    // Built from numeric components, not a "YYYY-MM-DD" string. The date-only
+    // ISO form parses as UTC midnight, which renders back in local time and can
+    // roll onto the previous day (a CDT reservation for the 5th showing as the
+    // 4th). The (year, month, day) constructor is local, matching dateLabel's
+    // own "today" comparison.
     return new Date(Number(yyyy), Number(mm) - 1, Number(dd));
 }
 
@@ -67,8 +65,8 @@ export function upcomingDates(count: number = 8): Date[] {
     return dates;
 }
 
-// "4 min ago" / "2 hr ago" for crowdsourced updated_at timestamps — makes
-// clear to the user this is a snapshot, not a live read.
+// "4 min ago" / "2 hr ago" for crowdsourced updated_at timestamps, so the user
+// can see this is a snapshot rather than a live read.
 export function timeAgo(iso: string): string {
     const then = new Date(iso).getTime();
     const diffMs = Date.now() - then;

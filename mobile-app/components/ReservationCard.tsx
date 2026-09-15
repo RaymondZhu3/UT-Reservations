@@ -15,8 +15,8 @@ type Props = {
     reservation: Reservation;
 };
 
-// "15 minutes" / "1 hour" / "2 hours" / "90 minutes" — used in the
-// confirmation alert after scheduling a reminder.
+// "15 minutes" / "1 hour" / "2 hours" / "90 minutes", for the confirmation
+// alert shown after scheduling a reminder.
 function minutesLabel(mins: number): string {
     if (mins === 60) return '1 hour';
     if (mins % 60 === 0) return `${mins / 60} hours`;

@@ -1,6 +1,5 @@
 // Formatting helpers for Reservation data (scraped from myreservations.php).
-// Pulled out of index.tsx so Home and My Reservations both use one copy
-// instead of two near-identical implementations.
+// Shared by Home and My Reservations so the two can't drift.
 import { FACILITY_CODE_MAP } from '@/constants/facilities';
 import { dateLabel, parseUtDateString, parseUtTime } from './dates';
 import type { Reservation } from '@/constants/types';
@@ -14,19 +13,10 @@ export function formatFacility(raw: string): string {
     return `${name} · Court ${court}`;
 }
 
-// "Today" / "Tomorrow" / "Wed, Aug 5" for a reservation's raw MM/DD/YYYY
-// date string. Thin wrapper around dates.ts's dateLabel so screens never
-// need to parse the date themselves.
+// "Today" / "Tomorrow" / "Wed, Aug 5" from a reservation's raw MM/DD/YYYY
+// string. Wraps dates.ts's dateLabel so screens never parse dates themselves.
 export function reservationDateLabel(raw: string): string {
     return dateLabel(parseUtDateString(raw));
-}
-
-// Full weekday + month + day, e.g. "Wednesday, August 5" — used where the
-// short label isn't enough context (e.g. "Last played ...").
-export function formatReservationDate(raw: string): string {
-    return parseUtDateString(raw).toLocaleDateString('en-US', {
-        weekday: 'long', month: 'long', day: 'numeric',
-    });
 }
 
 // Combines date + time into one comparable timestamp, since myreservations.php
@@ -38,8 +28,7 @@ function reservationTimestamp(r: Pick<Reservation, 'date' | 'time'>): number {
     return timestamp.getTime();
 }
 
-// Soonest first — used by the home screen (pick just the next one) and My
-// Reservations (show the full list in order).
+// Soonest first. Home takes the head of this; My Reservations shows it all.
 export function sortReservationsByDate<T extends Pick<Reservation, 'date' | 'time'>>(reservations: T[]): T[] {
     return [...reservations].sort((a, b) => reservationTimestamp(a) - reservationTimestamp(b));
 }

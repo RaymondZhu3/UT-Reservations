@@ -12,8 +12,7 @@ export default function TabLayout() {
     return (
         <Tabs
             screenOptions={{
-                // Brand orange. The app is light-only; nothing here follows
-                // the system colour scheme.
+                // The app is light-only; nothing here follows the system scheme.
                 tabBarActiveTintColor: Brand.orange,
                 tabBarInactiveTintColor: Brand.inkFaint,
                 tabBarLabelStyle: Type.micro,

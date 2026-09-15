@@ -7,8 +7,8 @@ import type { CourtSlot } from '@/constants/types';
 const RESERVE_URL = 'https://apps.rs.utexas.edu/app/myrecsports/reserve_courts.php';
 
 // Table orientation: rows = time slots, columns = courts. Header row is
-// [ "Time", "A", "B", ... ] — first cell is just a label, the rest are
-// court names. Each body row is [ time, courtACell, courtBCell, ... ].
+// [ "Time", "A", "B", ... ]; the first cell is a label, the rest are court
+// names. Each body row is [ time, courtACell, courtBCell, ... ].
 // Open slots are <td class="success"> containing a link whose href has
 // reservationAction=reserve.
 function buildScrapeJs(facilityId: number) {
@@ -18,15 +18,14 @@ function buildScrapeJs(facilityId: number) {
                 var table = document.querySelector('table');
                 if (!table) throw new Error('no table found on page');
 
-                // Header row: first cell is the "Time" column label, the
-                // rest are court names, one per column index.
+                // First cell is the "Time" label; the rest are court names.
                 var headerRow = table.querySelector('thead tr') || table.querySelector('tr');
                 var headerCells = headerRow ? Array.prototype.slice.call(headerRow.querySelectorAll('th, td')) : [];
                 var courtNames = headerCells.slice(1).map(function(cell) {
                     return cell.innerText.trim();
                 });
 
-                // Body rows — fall back to "every row after the first" if
+                // Body rows. Falls back to "every row after the first" when
                 // there's no explicit <tbody>.
                 var bodyRows = table.querySelectorAll('tbody tr');
                 if (bodyRows.length === 0) {
@@ -74,10 +73,7 @@ type Props = {
     date: Date;
     onResult: (facilityId: number, slots: CourtSlot[]) => void;
     onError: (facilityId: number, message: string) => void;
-    // Debug only: renders the WebView at full size instead of hidden, so
-    // you can actually see the page reserve_courts.php loads with the
-    // current facility_id/date params. Flip this on temporarily when
-    // results look wrong — real markup beats guessing at selectors again.
+    // Renders the WebView at full size instead of hidden, to inspect the real page.
     debugVisible?: boolean;
 };
 
@@ -85,11 +81,8 @@ export type AvailabilityScraperHandle = {
     reload: () => void;
 };
 
-// One invisible WebView pointed at a single facility's availability page for a
-// given date. Same hidden-WebView pattern as ReservationsContext, aimed at
-// reserve_courts.php instead of myreservations.php.
-//
-// facility_id=<id>&date=MM/DD/YYYY are the parameters the page expects.
+// One hidden WebView per facility+date, on reserve_courts.php. Same pattern as
+// ReservationsContext. The page expects facility_id=<id>&date=MM/DD/YYYY.
 function buildUrl(facilityId: number, date: Date): string {
     const dateParam = toUtDateString(date);
     return `${RESERVE_URL}?facility_id=${facilityId}&date=${encodeURIComponent(dateParam)}`;
@@ -120,11 +113,10 @@ const AvailabilityScraper = forwardRef<AvailabilityScraperHandle, Props>(
             }
         }
 
-        // Constrain height only, never width. innerText (used in
-        // buildScrapeJs above) reflects rendered layout, so a ~0px-wide WebView
-        // collapses the table's text to empty strings even though DOM-only
-        // checks like querySelector and classList still match. A WebView must
-        // never render at zero size in either axis.
+        // Constrain height only, never width. innerText (used in buildScrapeJs
+        // above) reflects rendered layout, so a ~0px-wide WebView collapses the
+        // table's text to empty strings, while DOM-only checks like
+        // querySelector and classList keep matching and hide the problem.
         return (
             <View style={debugVisible ? { height: 500, width: '100%' } : { height: 0, overflow: 'hidden' }}>
                 <WebView
@@ -133,11 +125,10 @@ const AvailabilityScraper = forwardRef<AvailabilityScraperHandle, Props>(
                     onLoadEnd={handleLoadEnd}
                     onMessage={handleMessage}
                     style={debugVisible ? { flex: 1 } : { height: 1 }}
-                    // Same reasoning as ReservationsContext's WebView — court
-                    // availability changes constantly, a cached response is
-                    // never the right answer, and reload() (used by
-                    // useCourtAvailability's refresh()) can otherwise serve
-                    // a stale page.
+                    // Same reasoning as ReservationsContext's WebView. Court
+                    // availability changes constantly, so a cached response is
+                    // always wrong, and reload() (from useCourtAvailability's
+                    // refresh()) will otherwise serve a stale page.
                     cacheEnabled={false}
                 />
             </View>
