@@ -76,13 +76,6 @@ Session expiry is caught by watching for the SAML2 redirect in
 `onNavigationStateChange`, guarded by a `useRef` so the redirect to login can
 only fire once.
 
-**If you touch `AvailabilityScraper.tsx`:** the hidden WebView constrains height
-only, never width. `innerText` reflects rendered layout, not just the DOM, so a
-WebView that's zero pixels wide collapses the table's text layout and every
-`innerText` read comes back empty, while `querySelector` and `classList` checks
-keep working because they only touch the DOM. The symptom is a correct slot
-count with blank times and court names.
-
 ### Where availability data comes from
 
 The home screen needs availability across all eight facilities without making
